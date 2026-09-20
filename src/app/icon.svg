@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <title>Lista e Compra</title>
+  <rect width="96" height="96" rx="22" fill="#C2410C"/>
+  <rect x="20" y="16" width="56" height="64" rx="10" fill="#FFF8F0"/>
+  <path d="M28 33l5 5 9-11" fill="none" stroke="#2E7D32" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 33h14M30 51h36M30 67h24" fill="none" stroke="#C2410C" stroke-width="6" stroke-linecap="round"/>
+</svg>
