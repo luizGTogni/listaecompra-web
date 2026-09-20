@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Design tokens live in this file and nowhere else.
+ *
+ *  1. Breakpoints  -> @theme            (defined once, mobile-first)
+ *  2. Colors       -> :root / .dark     (raw values, one block per theme)
+ *  3. Tailwind map -> @theme inline     (exposes the tokens as utilities)
+ *  4. Base styles  -> @layer base       (focus, motion, body)
+ *
+ * Tailwind's preflight (a modern CSS reset) is included by the first import.
+ * `src/styles/tokens.test.ts` checks the WCAG AA contrast of every pair below.
+ */
+
+/* Dark mode is class-based (`.dark` on <html>), driven by next-themes:
+   it follows prefers-color-scheme until the user picks a theme manually. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Breakpoints, defined once. Mobile-first: unprefixed utilities target small
+ * screens and `sm:`, `md:`... apply from that width upwards (min-width).
+ * Anything in JS (e.g. a future useMediaQuery) should mirror these values.
+ */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-sm: 40rem; /* 640px  */
+  --breakpoint-md: 48rem; /* 768px  */
+  --breakpoint-lg: 64rem; /* 1024px */
+  --breakpoint-xl: 80rem; /* 1280px */
+
+  /* Roboto is self-hosted through @fontsource (font-display: swap). */
+  --font-sans: "Roboto Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+
+  /* Brand palette */
+  --background: #fff8f0;
+  --foreground: #292524; /* Text */
+  --card: #ffffff; /* Surface */
+  --card-foreground: #292524;
+  --popover: #ffffff;
+  --popover-foreground: #292524;
+  --primary: #c2410c;
+  --primary-foreground: #ffffff;
+  --contrast: #2e7d32;
+  --contrast-foreground: #ffffff;
+  --muted-foreground: #78716c; /* Text Secondary */
+
+  /* Derived from the palette */
+  --secondary: #f1e7da;
+  --secondary-foreground: #292524;
+  --muted: #fffaf5; /* must stay as light as background: muted-foreground is only 4.55:1 on it */
+  --accent: #fbe9dc;
+  --accent-foreground: #7c2d12;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --border: #e7ddd1; /* decorative dividers */
+  --input: #8f8781; /* form control borders need 3:1 (WCAG 1.4.11) */
+  --ring: #c2410c;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #1c1917;
+  --foreground: #f5f5f4;
+  --card: #292524;
+  --card-foreground: #f5f5f4;
+  --popover: #292524;
+  --popover-foreground: #f5f5f4;
+  --primary: #f97316; /* brand orange, lightened to keep contrast on dark */
+  --primary-foreground: #1c1917;
+  --contrast: #66bb6a;
+  --contrast-foreground: #1c1917;
+  --muted-foreground: #a8a29e;
+
+  --secondary: #3d3835;
+  --secondary-foreground: #f5f5f4;
+  --muted: #292524;
+  --accent: #3a2a20;
+  --accent-foreground: #f5f5f4;
+  --destructive: #f87171;
+  --destructive-foreground: #1c1917;
+  --border: #44403c;
+  --input: #8a827d;
+  --ring: #f97316;
+}
+
+/* Maps the CSS variables above to Tailwind utilities (bg-primary, text-muted-foreground...). */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-contrast: var(--contrast);
+  --color-contrast-foreground: var(--contrast-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-dvh bg-background text-foreground antialiased;
+  }
+
+  /* Visible keyboard focus everywhere; components can refine it with utilities. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Respect users who ask for less motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
