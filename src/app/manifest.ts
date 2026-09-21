@@ -3,9 +3,9 @@ import { THEME_COLORS } from "@/app/theme-colors";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Lista e Compra",
-    short_name: "Lista e Compra",
-    description: "Your shopping list",
+    name: "Lista&Compra",
+    short_name: "Lista&Compra",
+    description: "Sua lista de compras, sempre à mão.",
     lang: "pt-BR",
     start_url: "/",
     display: "standalone",

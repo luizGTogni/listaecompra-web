@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import Home from "@/app/page";
+import Home from "@/app/(main)/page";
 
 describe("Home", () => {
-  it("renders the app title", () => {
+  it("has its heading", () => {
     render(<Home />);
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Lista e Compra" }),
+      screen.getByRole("heading", { level: 1, name: "Início" }),
     ).toBeInTheDocument();
   });
 });
