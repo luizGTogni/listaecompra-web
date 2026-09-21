@@ -5,7 +5,7 @@ describe("Logo", () => {
   it("renders the wordmark as real text", () => {
     const { container } = render(<Logo />);
 
-    expect(container).toHaveTextContent("Lista e Compra");
+    expect(container).toHaveTextContent("Lista&Compra");
   });
 
   it("hides the decorative mark from assistive tech", () => {

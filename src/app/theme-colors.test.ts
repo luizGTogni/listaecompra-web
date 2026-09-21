@@ -24,7 +24,7 @@ describe("web app manifest", () => {
 
   it("is installable as a standalone app", () => {
     expect(m).toMatchObject({
-      name: "Lista e Compra",
+      name: "Lista&Compra",
       start_url: "/",
       display: "standalone",
       background_color: THEME_COLORS.light,

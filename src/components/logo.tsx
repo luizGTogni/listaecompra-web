@@ -39,7 +39,7 @@ export function Logo({ className }: { className?: string }) {
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark />
       <span className="text-xl leading-none font-bold tracking-tight">
-        Lista <span className="font-normal text-primary">e</span> Compra
+        Lista<span className="font-normal text-primary">{"&"}</span>Compra
       </span>
     </span>
   );
