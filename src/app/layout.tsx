@@ -2,15 +2,15 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/roboto/wght.css";
 import { Providers } from "@/app/providers";
 import { THEME_COLORS } from "@/app/theme-colors";
-import { Header } from "@/layouts/header";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Lista e Compra",
-  description: "Your shopping list",
-  applicationName: "Lista e Compra",
+  // Pages set `title` and it is wrapped by the template, e.g. "Criar conta · Lista&Compra".
+  title: { default: "Lista&Compra", template: "%s · Lista&Compra" },
+  description: "Sua lista de compras, sempre à mão.",
+  applicationName: "Lista&Compra",
   // iOS: lets "Add to Home Screen" open the app without Safari's browser UI.
-  appleWebApp: { capable: true, title: "Lista e Compra" },
+  appleWebApp: { capable: true, title: "Lista&Compra" },
 };
 
 export const viewport: Viewport = {
@@ -30,10 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // before React hydrates, so the server and client markup differ on purpose.
     <html lang="pt-BR" suppressHydrationWarning>
       <body>
-        <Providers>
-          <Header />
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
