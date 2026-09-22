@@ -1,11 +1,21 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { ClearCacheOnSignOut } from "@/features/auth/components/clear-cache-on-sign-out";
+import { currentUserQuery } from "@/features/auth/queries";
+import {
+  notifySessionInvalid,
+  onSessionInvalid,
+} from "@/features/auth/session-events";
+import { isUnauthorizedError } from "@/features/auth/unauthorized";
 import { ApiError } from "@/services/api";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -25,7 +35,39 @@ export function Providers({ children }: { children: ReactNode }) {
               !(error instanceof ApiError && error.status < 500),
           },
         },
+        // Any authenticated request can find out mid-session that the cookie
+        // is gone (expired, or the user signed out in another tab). The
+        // client itself does not exist yet at this point (it is what we are
+        // building), so these only announce it; see the effect below.
+        queryCache: new QueryCache({
+          onError: (error, query) => {
+            // Skip the current-user query itself: a failed refetch would
+            // just trigger another one.
+            if (
+              isUnauthorizedError(error) &&
+              query.queryKey[0] !== currentUserQuery.queryKey[0]
+            ) {
+              notifySessionInvalid();
+            }
+          },
+        }),
+        mutationCache: new MutationCache({
+          onError: (error) => {
+            if (isUnauthorizedError(error)) notifySessionInvalid();
+          },
+        }),
       }),
+  );
+
+  // Whichever request notices the session is gone, refresh the current user:
+  // the guard watching it (RequireToken/RequireVerified) then redirects to
+  // /sign-in.
+  useEffect(
+    () =>
+      onSessionInvalid(() => {
+        queryClient.invalidateQueries({ queryKey: currentUserQuery.queryKey });
+      }),
+    [queryClient],
   );
 
   return (
@@ -38,7 +80,6 @@ export function Providers({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       <QueryClientProvider client={queryClient}>
-        <ClearCacheOnSignOut />
         {/* Top, not bottom: the bottom belongs to the navigation bar. */}
         <Toaster position="top-center" />
         {children}
