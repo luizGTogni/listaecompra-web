@@ -76,7 +76,7 @@ describe("SignUpForm", () => {
     const user = userEvent.setup();
     const fetchMock = mockApi({
       "POST /users": { status: 201, body: created },
-      "POST /session": { status: 200, body: { token: "jwt-token" } },
+      "POST /session": { status: 204 },
     });
     renderWithProviders(<SignUpForm />);
 
@@ -100,10 +100,7 @@ describe("SignUpForm", () => {
       email: "ana@example.com",
       password: "secret",
     });
-    expect(useAuthStore.getState()).toMatchObject({
-      token: "jwt-token",
-      email: "ana@example.com",
-    });
+    expect(useAuthStore.getState().email).toBe("ana@example.com");
     // The first code was just sent, so a resend is locked for the cooldown.
     expect(useAuthStore.getState().resendAvailableAt).toBeGreaterThan(
       Date.now() + 55_000,
@@ -122,7 +119,7 @@ describe("SignUpForm", () => {
     await user.click(submit());
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/sign-in"));
-    expect(useAuthStore.getState().token).toBeNull();
+    expect(useAuthStore.getState().email).toBeNull();
   });
 
   it("disables the button while the request is in flight", async () => {

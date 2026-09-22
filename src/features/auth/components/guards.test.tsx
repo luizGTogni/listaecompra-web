@@ -1,9 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { resetAuthStore, signInAs } from "@/test/auth";
 import { meReply, mockApi, mockFetchNetworkFailure } from "@/test/fetch";
 import { renderWithProviders } from "@/test/render";
-import { useAuthStore } from "../store";
 import { RequireToken } from "./require-token";
 import { RequireVerified } from "./require-verified";
 
@@ -11,7 +9,6 @@ const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 beforeEach(() => {
-  resetAuthStore();
   replace.mockClear();
 });
 
@@ -21,6 +18,12 @@ afterEach(() => {
 
 describe("RequireToken", () => {
   it("sends visitors without a session to sign in", async () => {
+    mockApi({
+      "GET /users/me": {
+        status: 401,
+        body: { name: "Unauthorized", message: "x" },
+      },
+    });
     renderWithProviders(
       <RequireToken>
         <p>secret</p>
@@ -31,27 +34,35 @@ describe("RequireToken", () => {
     expect(screen.queryByText("secret")).not.toBeInTheDocument();
   });
 
-  it("renders its children for a signed-in user", () => {
-    signInAs();
+  it("renders its children once the session is confirmed", async () => {
+    mockApi({ "GET /users/me": meReply() });
     renderWithProviders(
       <RequireToken>
         <p>secret</p>
       </RequireToken>,
     );
 
-    expect(screen.getByText("secret")).toBeInTheDocument();
+    expect(await screen.findByText("secret")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("redirects when the session disappears", async () => {
-    signInAs();
-    renderWithProviders(
+  it("redirects when a later check finds the session gone", async () => {
+    mockApi({
+      "GET /users/me": [
+        meReply(),
+        { status: 401, body: { name: "Unauthorized", message: "x" } },
+      ],
+    });
+    const { queryClient } = renderWithProviders(
       <RequireToken>
         <p>secret</p>
       </RequireToken>,
     );
+    expect(await screen.findByText("secret")).toBeInTheDocument();
 
-    useAuthStore.getState().clearSession();
+    // This is what the app's global 401 handling does (see Providers) after
+    // any authenticated request comes back Unauthorized.
+    await queryClient.invalidateQueries({ queryKey: ["current-user"] });
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/sign-in"));
   });
@@ -65,7 +76,6 @@ describe("RequireVerified", () => {
   );
 
   it("shows a spinner, then the page, for a verified user", async () => {
-    signInAs();
     mockApi({ "GET /users/me": meReply("2026-09-20T12:05:00.000Z") });
     renderWithProviders(page);
 
@@ -74,7 +84,6 @@ describe("RequireVerified", () => {
   });
 
   it("sends an unverified user to the code screen", async () => {
-    signInAs();
     mockApi({ "GET /users/me": meReply() });
     renderWithProviders(page);
 
@@ -82,23 +91,20 @@ describe("RequireVerified", () => {
     expect(screen.queryByText("home")).not.toBeInTheDocument();
   });
 
-  it("signs out when the API says the token expired", async () => {
-    signInAs();
+  it("sends a visitor with no session to sign in", async () => {
     mockApi({
       "GET /users/me": {
         status: 401,
-        body: { name: "Unauthorized", message: "Unauthorized." },
+        body: { name: "Unauthorized", message: "x" },
       },
     });
     renderWithProviders(page);
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/sign-in"));
-    expect(useAuthStore.getState().token).toBeNull();
   });
 
   it("lets the user retry when the server is unreachable", async () => {
     const user = userEvent.setup();
-    signInAs();
     mockFetchNetworkFailure();
     renderWithProviders(page);
 

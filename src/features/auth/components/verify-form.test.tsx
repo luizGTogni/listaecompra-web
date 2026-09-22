@@ -13,7 +13,7 @@ const codeInput = () => screen.getByLabelText("Código de verificação");
 
 beforeEach(() => {
   resetAuthStore();
-  signInAs("ana@example.com", "jwt-token");
+  signInAs("ana@example.com");
   replace.mockClear();
 });
 
@@ -40,9 +40,10 @@ describe("VerifyForm", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
     const [, init] = requestsTo(fetchMock, "POST /users/verify")[0];
-    // Typed in lower case, sent in upper case, with the session token.
+    // Typed in lower case, sent in upper case. The session travels as a
+    // cookie the browser attaches on its own (credentials: "include").
     expect(JSON.parse(init!.body as string)).toEqual({ codeValue: "AB3D9X" });
-    expect(init!.headers).toMatchObject({ Authorization: "Bearer jwt-token" });
+    expect(init!.credentials).toBe("include");
   });
 
   it("does not submit an incomplete code", async () => {
@@ -75,7 +76,7 @@ describe("VerifyForm", () => {
     expect(codeInput()).toHaveFocus();
     expect(replace).not.toHaveBeenCalled();
     // A wrong code is not a dead session.
-    expect(useAuthStore.getState().token).toBe("jwt-token");
+    expect(useAuthStore.getState().email).toBe("ana@example.com");
   });
 
   it("explains an expired code", async () => {
@@ -110,7 +111,10 @@ describe("VerifyForm", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
   });
 
-  it("signs the user out when the session token is rejected", async () => {
+  it("shows an error without touching local state when the cookie is rejected", async () => {
+    // The redirect itself is the guard's job (see guards.test.tsx and
+    // providers.test.tsx); this only checks the form does not crash or
+    // clear anything on its own.
     const user = userEvent.setup();
     mockApi({
       "POST /users/verify": {
@@ -122,7 +126,8 @@ describe("VerifyForm", () => {
 
     await user.type(codeInput(), "AAAAAA");
 
-    await waitFor(() => expect(useAuthStore.getState().token).toBeNull());
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(useAuthStore.getState().email).toBe("ana@example.com");
   });
 
   it("resends the code and locks the button for 60 seconds", async () => {
@@ -185,12 +190,12 @@ describe("VerifyForm", () => {
 
   it("lets the user leave with another account", async () => {
     const user = userEvent.setup();
-    mockApi({});
+    mockApi({ "POST /session/logout": { status: 204 } });
     renderWithProviders(<VerifyForm />);
 
     await user.click(screen.getByRole("button", { name: "Usar outra conta" }));
 
-    expect(useAuthStore.getState().token).toBeNull();
+    await waitFor(() => expect(useAuthStore.getState().email).toBeNull());
     expect(replace).toHaveBeenCalledWith("/sign-in");
   });
 });

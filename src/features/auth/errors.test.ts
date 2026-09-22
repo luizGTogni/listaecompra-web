@@ -94,9 +94,8 @@ describe("getVerifyMessage", () => {
     new ApiError(status, { name, message: "x" });
 
   it("tells a wrong code from an expired one", () => {
-    expect(getVerifyMessage(api(401, "CodeInvalid"))).toMatch(/incorreto/);
-    expect(getVerifyMessage(api(404, "ResourceNotFound"))).toMatch(/incorreto/);
-    expect(getVerifyMessage(api(401, "CodeExpired"))).toMatch(/expirou/);
+    expect(getVerifyMessage(api(400, "CodeInvalid"))).toMatch(/incorreto/);
+    expect(getVerifyMessage(api(422, "CodeExpired"))).toMatch(/expirou/);
   });
 
   it("falls back to the common messages", () => {
