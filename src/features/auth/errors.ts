@@ -51,8 +51,7 @@ export function getVerifyMessage(error: unknown): string {
     if (name === "CodeExpired") {
       return "Este código expirou. Peça um novo código.";
     }
-    // A code that does not exist (404) or was replaced by a newer one.
-    if (name === "CodeInvalid" || name === "ResourceNotFound") {
+    if (name === "CodeInvalid") {
       return "Código incorreto. Confira o e-mail e tente de novo.";
     }
   }

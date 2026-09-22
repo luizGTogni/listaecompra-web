@@ -127,7 +127,12 @@ export function VerifyForm() {
             ? `Reenviar código em ${remaining}s`
             : "Reenviar código"}
         </Button>
-        <Button type="button" variant="link" onClick={signOut}>
+        <Button
+          type="button"
+          variant="link"
+          disabled={signOut.isPending}
+          onClick={() => signOut.mutate()}
+        >
           Usar outra conta
         </Button>
       </div>

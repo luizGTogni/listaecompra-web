@@ -25,13 +25,13 @@ describe("apiFetch", () => {
     );
   });
 
-  it("sends the token as a bearer header", async () => {
+  it("sends cookies, so the httpOnly session cookie reaches the backend", async () => {
     const fetchMock = mockFetch(200, {});
 
-    await apiFetch("/shoppers", { token: "jwt" });
+    await apiFetch("/users/me");
 
-    expect(fetchMock.mock.calls[0][1]?.headers).toEqual({
-      Authorization: "Bearer jwt",
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      credentials: "include",
     });
   });
 

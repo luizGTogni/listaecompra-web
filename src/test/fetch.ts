@@ -20,7 +20,10 @@ export function mockFetch(status: number, body?: unknown) {
 // A reply per endpoint, keyed by "METHOD /path" (path without the API prefix).
 // Values can be a list to answer successive calls differently. Unknown
 // endpoints fail the test loudly.
-export function mockApi(routes: Record<string, Reply | Reply[]>) {
+// A route can also be a function of the request URL, to answer by query/page.
+export function mockApi(
+  routes: Record<string, Reply | Reply[] | ((url: URL) => Reply)>,
+) {
   const counters = new Map<string, number>();
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url).pathname.replace("/api/v1", "");
@@ -29,9 +32,12 @@ export function mockApi(routes: Record<string, Reply | Reply[]>) {
     if (!route) throw new Error(`Unexpected request: ${key}`);
     const index = counters.get(key) ?? 0;
     counters.set(key, index + 1);
-    const reply = Array.isArray(route)
-      ? route[Math.min(index, route.length - 1)]
-      : route;
+    const reply =
+      typeof route === "function"
+        ? route(new URL(url))
+        : Array.isArray(route)
+          ? route[Math.min(index, route.length - 1)]
+          : route;
     return toResponse(reply);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -49,6 +55,28 @@ export function requestsTo(fetchMock: ReturnType<typeof mockApi>, key: string) {
     const path = new URL(url).pathname.replace("/api/v1", "");
     return `${init?.method ?? "GET"} ${path}` === key;
   });
+}
+
+// A `GET /shoppers` reply for tests: fills in page/perPage/total from the
+// list given, as if it were the only page.
+export function listsReply(
+  shopperLists: unknown[],
+  overrides: Partial<{
+    page: number;
+    perPage: number;
+    total: number;
+  }> = {},
+): Reply {
+  return {
+    status: 200,
+    body: {
+      shopperLists,
+      page: 1,
+      perPage: 10,
+      total: shopperLists.length,
+      ...overrides,
+    },
+  };
 }
 
 // A `GET /users/me` reply for tests. Pass a date for a verified account.

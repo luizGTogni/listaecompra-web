@@ -1,45 +1,34 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PageLoading } from "@/components/page-status";
 import { Button } from "@/components/ui/button";
-import { currentUserQuery } from "../queries";
-import { RequireToken } from "./require-token";
+import { useSessionStatus } from "../use-session-status";
 
 // Everything behind this needs a signed-in AND verified user.
 export function RequireVerified({ children }: { children: ReactNode }) {
-  return (
-    <RequireToken>
-      <VerifiedGate>{children}</VerifiedGate>
-    </RequireToken>
-  );
-}
-
-function VerifiedGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const currentUser = useQuery(currentUserQuery);
-  const notVerified =
-    currentUser.isSuccess && !currentUser.data.user.verifiedAt;
+  const session = useSessionStatus();
 
   useEffect(() => {
-    if (notVerified) router.replace("/verify");
-  }, [notVerified, router]);
+    if (session.state === "unauthenticated") router.replace("/sign-in");
+    else if (session.state === "unverified") router.replace("/verify");
+  }, [session.state, router]);
 
-  if (currentUser.isError) {
+  if (session.state === "error") {
     return (
       <div
         role="alert"
         className="flex flex-col items-center gap-4 px-4 py-16 text-center"
       >
         <p>Não foi possível carregar sua conta.</p>
-        <Button onClick={() => currentUser.refetch()}>Tentar novamente</Button>
+        <Button onClick={session.retry}>Tentar novamente</Button>
       </div>
     );
   }
 
-  if (!currentUser.isSuccess || notVerified) return <PageLoading />;
+  if (session.state !== "verified") return <PageLoading />;
 
   return children;
 }

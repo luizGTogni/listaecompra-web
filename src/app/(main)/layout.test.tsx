@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import MainLayout from "@/app/(main)/layout";
-import { resetAuthStore, signInAs } from "@/test/auth";
 import { meReply, mockApi } from "@/test/fetch";
 import { renderWithProviders } from "@/test/render";
 
@@ -11,8 +10,6 @@ vi.mock("next/navigation", () => ({
 }));
 
 beforeEach(() => {
-  resetAuthStore();
-  signInAs();
   replace.mockClear();
 });
 

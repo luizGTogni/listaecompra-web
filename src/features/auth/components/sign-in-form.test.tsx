@@ -14,7 +14,7 @@ import { SignInForm } from "./sign-in-form";
 const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
-const session = { status: 200, body: { token: "jwt-token" } };
+const session = { status: 204 };
 async function signIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("E-mail"), " ana@example.com ");
   await user.type(screen.getByLabelText("Senha"), "secret");
@@ -61,15 +61,10 @@ describe("SignInForm", () => {
       email: "ana@example.com",
       password: "secret",
     });
-    expect(useAuthStore.getState()).toMatchObject({
-      token: "jwt-token",
-      email: "ana@example.com",
-    });
-    // The token is sent on the request that follows.
-    const [, listsInit] = requestsTo(fetchMock, "GET /users/me")[0];
-    expect(listsInit!.headers).toMatchObject({
-      Authorization: "Bearer jwt-token",
-    });
+    expect(useAuthStore.getState().email).toBe("ana@example.com");
+    // The cookie the backend just set travels on the request that follows.
+    const [, meInit] = requestsTo(fetchMock, "GET /users/me")[0];
+    expect(meInit!.credentials).toBe("include");
   });
 
   it("goes to the code screen when the account is not verified yet", async () => {
@@ -111,7 +106,7 @@ describe("SignInForm", () => {
       "E-mail ou senha incorretos.",
     );
     expect(replace).not.toHaveBeenCalled();
-    expect(useAuthStore.getState().token).toBeNull();
+    expect(useAuthStore.getState().email).toBeNull();
   });
 
   it("reports when the server cannot be reached", async () => {
