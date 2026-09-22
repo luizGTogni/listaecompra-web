@@ -1,12 +1,15 @@
 import { useAuthStore } from "@/features/auth/store";
 
-// The auth store is a module-level singleton persisted in localStorage, so
-// tests reset it to avoid leaking a session into the next test.
+// The store only keeps UI-facing bits now: the session itself is an httpOnly
+// cookie, invisible to JavaScript and to this store. Tests reset it, and
+// simulate "signed in" by mocking `GET /users/me` (see `meReply` in
+// `test/fetch.ts`), which is what the app itself relies on.
 export function resetAuthStore() {
   localStorage.clear();
-  useAuthStore.setState({ token: null, email: null, resendAvailableAt: null });
+  useAuthStore.setState({ email: null, resendAvailableAt: null });
 }
 
-export function signInAs(email = "ana@example.com", token = "test-token") {
-  useAuthStore.getState().setSession({ token, email });
+// Pre-fills the e-mail the store remembers, e.g. from an earlier sign-in.
+export function signInAs(email = "ana@example.com") {
+  useAuthStore.getState().setEmail(email);
 }
