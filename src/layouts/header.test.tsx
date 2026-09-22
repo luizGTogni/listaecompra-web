@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { Header } from "@/layouts/header";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
@@ -8,7 +9,7 @@ vi.mock("next/navigation", () => ({
 
 describe("Header", () => {
   it("links the logo to the home page", () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
 
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Lista&Compra" })).toHaveAttribute(
@@ -18,7 +19,7 @@ describe("Header", () => {
   });
 
   it("has the section links and a way to sign out", () => {
-    render(<Header />);
+    renderWithProviders(<Header />);
 
     expect(screen.getByRole("link", { name: "Lista" })).toHaveAttribute(
       "href",

@@ -29,7 +29,7 @@ const submit = () => screen.getByRole("button", { name: "Criar lista" });
 
 beforeEach(() => {
   resetAuthStore();
-  signInAs("ana@example.com", "jwt-token");
+  signInAs("ana@example.com");
   replace.mockClear();
   vi.mocked(toast.success).mockClear();
 });
@@ -69,7 +69,7 @@ describe("NewListForm", () => {
       title: "Feira",
       description: "Sábado",
     });
-    expect(init!.headers).toMatchObject({ Authorization: "Bearer jwt-token" });
+    expect(init!.credentials).toBe("include");
     expect(toast.success).toHaveBeenCalledWith('Lista "Feira" criada.');
     // The cached lists are stale now, so the list screen fetches again.
     expect(queryClient.getQueryState(shopperListsKey)?.isInvalidated).toBe(
