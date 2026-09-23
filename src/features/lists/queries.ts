@@ -1,5 +1,10 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
-import { getShopperLists } from "./api";
+import {
+  getMyInvites,
+  getShopperList,
+  getShopperListMembers,
+  getShopperLists,
+} from "./api";
 import type { ListFilters } from "./types";
 
 // Cache key of the user's lists. Whoever changes the lists invalidates it, so
@@ -16,3 +21,34 @@ export const shopperListsQuery = (filters: ListFilters) =>
     // instead of flashing an empty screen.
     placeholderData: keepPreviousData,
   });
+
+// Cache key of one list's detail (its items included). Any change to that
+// list or its items invalidates this.
+export const shopperListDetailKey = (listId: string) =>
+  ["shopper-list", listId] as const;
+
+export const shopperListQuery = (listId: string) =>
+  queryOptions({
+    queryKey: shopperListDetailKey(listId),
+    queryFn: () => getShopperList(listId),
+  });
+
+// Cache key of one list's members (owner + guests, including pending
+// invites). Separate from the list detail: inviting/removing someone does
+// not change the list or its items.
+export const shopperListMembersKey = (listId: string) =>
+  ["shopper-list-members", listId] as const;
+
+export const shopperListMembersQuery = (listId: string) =>
+  queryOptions({
+    queryKey: shopperListMembersKey(listId),
+    queryFn: () => getShopperListMembers(listId),
+  });
+
+// The current user's own pending invites, across every list.
+export const myInvitesKey = ["my-invites"] as const;
+
+export const myInvitesQuery = queryOptions({
+  queryKey: myInvitesKey,
+  queryFn: getMyInvites,
+});

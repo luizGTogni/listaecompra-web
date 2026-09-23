@@ -24,3 +24,44 @@ export const newListSchema = z.object({
 });
 
 export type NewListValues = z.infer<typeof newListSchema>;
+
+export const ITEM_TITLE_MAX_LENGTH = 60;
+export const ITEM_MAX_QUANTITY = 999;
+
+// The backend requires the title non-empty by rejecting a duplicate blank
+// one at most once; these are the frontend's own, friendlier limits.
+export const addItemSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Dê um nome para o item.")
+    .max(
+      ITEM_TITLE_MAX_LENGTH,
+      `O nome deve ter no máximo ${ITEM_TITLE_MAX_LENGTH} caracteres.`,
+    ),
+  quantity: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "A quantidade mínima é 1.")
+    .max(ITEM_MAX_QUANTITY, `A quantidade máxima é ${ITEM_MAX_QUANTITY}.`),
+});
+
+export type AddItemValues = z.infer<typeof addItemSchema>;
+
+// Same rules as sign-up's username. A pasted "@maria" or "Maria" is fine:
+// usernames are stored in lower case, so it is normalized before checking.
+export const inviteMemberSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/^@/, "").toLowerCase())
+    .pipe(
+      z
+        .string()
+        .min(3, "O usuário deve ter pelo menos 3 caracteres.")
+        .max(20, "O usuário deve ter no máximo 20 caracteres.")
+        .regex(/^[a-z0-9_]+$/, "Use apenas letras, números e _."),
+    ),
+});
+
+export type InviteMemberValues = z.infer<typeof inviteMemberSchema>;
