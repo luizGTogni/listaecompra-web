@@ -4,15 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "@phosphor-icons/react";
 
-// Screens where "new list" makes no sense (it is the screen itself, or a
-// place with nothing to add to).
-const HIDDEN_ON = ["/lists/new", "/profile"];
+// Only where a list of lists is on screen: the two places "add one more" is
+// an obvious next action. Not on a single list's own page, its new-list
+// form, or anywhere without lists (Convites, Perfil, Início).
+const SHOWN_ON = ["/lists", "/history"];
 
 // Floating action button: an icon on mobile, icon + label from `md`.
 export function NewListButton() {
   const pathname = usePathname();
 
-  if (HIDDEN_ON.some((path) => pathname.startsWith(path))) return null;
+  if (!SHOWN_ON.includes(pathname)) return null;
 
   return (
     <Link

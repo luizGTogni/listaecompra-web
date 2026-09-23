@@ -79,6 +79,17 @@ export function listsReply(
   };
 }
 
+// A `GET /shoppers/:id` reply for tests: a list plus its items.
+export function listDetailReply(
+  shopperList: object,
+  items: unknown[] = [],
+): Reply {
+  return {
+    status: 200,
+    body: { shopperList: { ...shopperList, shopperItems: items } },
+  };
+}
+
 // A `GET /users/me` reply for tests. Pass a date for a verified account.
 export function meReply(verifiedAt: string | null = null): Reply {
   return {

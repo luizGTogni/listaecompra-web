@@ -56,6 +56,7 @@ describe.each([
 
 describe("NewListButton", () => {
   it("links to the new list screen with an accessible name", () => {
+    navigation.pathname = "/lists";
     render(<NewListButton />);
 
     expect(screen.getByRole("link", { name: "Nova lista" })).toHaveAttribute(
@@ -64,22 +65,26 @@ describe("NewListButton", () => {
     );
   });
 
-  it.each(["/lists/new", "/profile"])("is hidden on %s", (pathname) => {
+  it.each([
+    "/",
+    "/lists/new",
+    "/lists/abc-123",
+    "/history/",
+    "/invites",
+    "/profile",
+  ])("is hidden on %s", (pathname) => {
     navigation.pathname = pathname;
     render(<NewListButton />);
 
     expect(screen.queryByRole("link", { name: "Nova lista" })).toBeNull();
   });
 
-  it.each(["/", "/lists", "/history", "/invites"])(
-    "shows on %s",
-    (pathname) => {
-      navigation.pathname = pathname;
-      render(<NewListButton />);
+  it.each(["/lists", "/history"])("shows on %s", (pathname) => {
+    navigation.pathname = pathname;
+    render(<NewListButton />);
 
-      expect(
-        screen.getByRole("link", { name: "Nova lista" }),
-      ).toBeInTheDocument();
-    },
-  );
+    expect(
+      screen.getByRole("link", { name: "Nova lista" }),
+    ).toBeInTheDocument();
+  });
 });

@@ -6,7 +6,8 @@ import { renderWithProviders } from "@/test/render";
 const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
-  usePathname: () => "/",
+  // A page where the floating "+" is expected to show.
+  usePathname: () => "/lists",
 }));
 
 beforeEach(() => {

@@ -30,6 +30,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The card is the list item: its link only wraps the title now.
+const cardOf = (title: RegExp | string) =>
+  screen.getByRole("heading", { name: title }).closest("li")!;
+
 describe("ListsView", () => {
   it("shows a placeholder while loading, then the lists", async () => {
     mockApi({
@@ -65,13 +69,9 @@ describe("ListsView", () => {
     });
     renderWithProviders(<ListsView status="open" />);
 
-    const finished = await screen.findByRole("link", { name: /Antiga/ });
-    expect(within(finished).getByText("Concluída")).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("link", { name: /Atual/ })).queryByText(
-        "Concluída",
-      ),
-    ).toBeNull();
+    await screen.findByRole("heading", { name: "Antiga" });
+    expect(within(cardOf("Antiga")).getByText("Concluída")).toBeInTheDocument();
+    expect(within(cardOf("Atual")).queryByText("Concluída")).toBeNull();
   });
 
   it("flags the lists the user was invited to", async () => {
@@ -81,7 +81,11 @@ describe("ListsView", () => {
       "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
       "GET /shoppers": reply([
         makeList({ title: "Minha lista" }),
-        makeList({ title: "Da Maria", userId: "someone-else" }),
+        makeList({
+          title: "Da Maria",
+          userId: "someone-else",
+          user: { name: "Maria Souza", username: "maria" },
+        }),
         makeList({
           title: "Da Maria antiga",
           userId: "someone-else",
@@ -91,19 +95,39 @@ describe("ListsView", () => {
     });
     renderWithProviders(<ListsView status="open" />);
 
-    const guest = (
-      await screen.findByRole("heading", { name: "Da Maria" })
-    ).closest("a")!;
+    await screen.findByRole("heading", { name: "Da Maria" });
+    const guest = cardOf("Da Maria");
     expect(within(guest).getByText("Convidado")).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("link", { name: /Minha lista/ })).queryByText(
-        "Convidado",
-      ),
-    ).toBeNull();
+    expect(within(cardOf("Minha lista")).queryByText("Convidado")).toBeNull();
     // A guest list can also be finished: both flags show.
-    const both = screen.getByRole("link", { name: /Da Maria antiga/ });
+    const both = cardOf("Da Maria antiga");
     expect(within(both).getByText("Convidado")).toBeInTheDocument();
     expect(within(both).getByText("Concluída")).toBeInTheDocument();
+  });
+
+  it("says whose list it is when the guest badge is tapped", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+      "GET /shoppers": reply([
+        makeList({
+          title: "Da Maria",
+          userId: "someone-else",
+          user: { name: "Maria Souza", username: "maria" },
+        }),
+      ]),
+    });
+    renderWithProviders(<ListsView status="open" />);
+
+    await screen.findByRole("heading", { name: "Da Maria" });
+    await user.click(
+      await within(cardOf("Da Maria")).findByRole("button", {
+        name: /Convidado/,
+      }),
+    );
+
+    expect(await screen.findByText("@maria")).toBeInTheDocument();
+    expect(screen.getByText("Maria Souza")).toBeInTheDocument();
   });
 
   it("does not flag anything before it knows who the user is", async () => {
@@ -115,9 +139,8 @@ describe("ListsView", () => {
     });
     renderWithProviders(<ListsView status="open" />);
 
-    const card = (
-      await screen.findByRole("heading", { name: "Da Maria" })
-    ).closest("a")!;
+    await screen.findByRole("heading", { name: "Da Maria" });
+    const card = cardOf("Da Maria");
 
     expect(within(card).queryByText("Convidado")).toBeNull();
   });
@@ -371,7 +394,8 @@ describe("status", () => {
     });
     renderWithProviders(<ListsView status="closed" />);
 
-    const card = await screen.findByRole("link", { name: /Feira/ });
+    await screen.findByRole("heading", { name: /Feira/ });
+    const card = cardOf(/Feira/);
 
     expect(within(card).queryByText("Concluída")).toBeNull();
   });

@@ -4,11 +4,32 @@ Things the frontend needs or works around. Each task says what the frontend does
 
 ## Open
 
-### [ ] 1. Guest lists do not say who owns them
+### [~] 1. A pending invite carries no list title or inviter, and cannot even be looked up
 
-`GET /shoppers` now returns lists the user was invited to alongside their own (task 5, done), but each item is still just `{ id, userId, title, description, closedAt, createdAt }`. The frontend can tell a guest list apart (`userId` differs from the current user) but cannot say whose list it is.
+**Wanted:** the accept/decline screen (`/invites`) shows which list the invite is for, and who sent it.
 
-**Proposal:** add `owner: { id, name, username }` to each item, so the "Convidado" badge in `ListCard` can say "de Maria" instead of just "Convidado".
+**In progress on the backend:** `GET /users/shoppers/invites` now includes `shopperList: { title, user: { name, username } }` per invite (`FindAllShopperListInviteService`, `ShopperListMemberWithList`). Two things to double check before it's done:
+
+- The response **schema** (`find-all-shopper-list-invite.schema.ts`) currently names the field `userId: z.object({ name, username })`, but the Prisma query actually returns it as `shopperList.user` (matching the `ShopperListMemberWithList` TS type), not `shopperList.userId`. As written, Fastify's response serialization will not find `userId` and the field will likely come out empty/stripped — rename the schema field to `user` to match.
+- `InMemoryShopperListMemberRepository.findAllByMemberId` still returns `shopperList: { title, userId: string }` (the plain owner id, no `user` object) — inconsistent with the Prisma repository and the updated `ShopperListMemberWithList` type; fix it to match, or in-memory-backed tests will disagree with the real (Prisma) behavior.
+
+**Frontend:** updated to expect `shopperList: { title, user: { name, username } }` on `GET /users/shoppers/invites` only (`features/lists/types.ts`'s `MyInvite`, distinct from the plain `ShopperListMember` returned by `GET /shoppers/:id/members`, which is unchanged). `InviteRow` shows the title, "Convite de {name} (@{username}) em {date}". Still open: `GetShopperListAccessService` still refuses `GET /shoppers/:id` for a pending (not yet accepted) member — accepting is still a leap of faith regarding the list's items/description, just not its title/owner anymore.
+
+### [~] 2. Inviting someone needs their user id, and there is no way to find it
+
+**In progress on the backend:** `POST /shoppers/:id/members/invite` now takes `{ username }` in the body (no `memberId` in the URL); `GetUserFoundByUsernameService` does an exact `findByUsername`. The frontend already uses it: the invite form asks for a username, normalizes `@Maria` to `maria` (sign-up stores usernames in lower case, and the lookup is exact), and the Profile screen shows the user's name and `@username` with a copy button (`MyUsername`).
+
+**Still open:** `GET /shoppers/:id/members` only returns `memberId` per row, so the members screen shows `Usuário 1b9d6bcd` for every member but the current user (the owner row is already named, from `GET /shoppers/:id`'s `user`). Suggest the same enrichment as invites: `user: { name, username }` per member, so it can say "Maria (@maria)".
+
+**Note:** `find-all-shopper-list-invite.schema.ts` now uses `user` (fixed), matching the Prisma query. The frontend also tolerates an invite that comes without `shopperList` (an older build), instead of crashing.
+
+### [ ] 3. `POST /password/forgot` reveals which e-mails have an account
+
+It answers `404 ResourceNotFound` for an unknown e-mail and `204` for a known one, so anyone can probe which addresses are registered (sign-in is careful to avoid exactly that).
+
+**Proposal:** answer `204` in both cases (and just skip sending the e-mail when there is no account). Frontend meanwhile: `useForgotPassword` treats the 404 as success and goes on to the code screen anyway, so the screen itself never reveals it; the backend still does.
+
+Also worth a look: `POST /password/reset` finds the account by the code alone (no e-mail), so a 6-character code has to be unguessable and the route should be rate limited.
 
 ## Done
 
@@ -23,6 +44,8 @@ Things the frontend needs or works around. Each task says what the frontend does
 - [x] `GET /shoppers` paginates properly: `{ shopperLists, page, perPage, total }`, newest first, with a `status=open|closed` filter and `limit` (10 or 25).
 - [x] `GET /shoppers` returns lists the user was invited to (accepted membership), not just owned ones.
 - [x] PRD `RN15` (block login before verification) removed to match the sign-up > code flow, which needs login to work for unverified accounts.
+
+- [x] `GET /shoppers` and `GET /shoppers/:id` include the owner as `user: { name, username }` (guest lists say whose they are). `GET /shoppers/:id` also renamed `items` to `shopperItems`.
 
 ## Note for local testing
 
