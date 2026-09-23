@@ -2,9 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { CircleNotch } from "@phosphor-icons/react";
-import { PasswordInput } from "@/components/password-input";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -13,31 +11,34 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { getSignInMessage } from "../errors";
-import { useSignIn } from "../hooks/use-sign-in";
-import { signInSchema, type SignInValues } from "../schemas";
+import { getForgotPasswordMessage } from "../errors";
+import { useForgotPassword } from "../hooks/use-password";
+import { forgotPasswordSchema, type ForgotPasswordValues } from "../schemas";
 
-export function SignInForm() {
-  const signIn = useSignIn();
+export function ForgotPasswordForm() {
+  const forgot = useForgotPassword();
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
+  } = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
     mode: "onTouched",
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "" },
   });
 
   return (
-    <form onSubmit={handleSubmit((values) => signIn.mutate(values))} noValidate>
+    <form
+      onSubmit={handleSubmit(({ email }) => forgot.mutate(email))}
+      noValidate
+    >
       <FieldGroup className="gap-5">
-        {signIn.isError && (
+        {forgot.isError && (
           <div
             role="alert"
             className="rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
           >
-            {getSignInMessage(signIn.error)}
+            {getForgotPasswordMessage(forgot.error)}
           </div>
         )}
 
@@ -56,31 +57,19 @@ export function SignInForm() {
           <FieldError errors={[errors.email]} />
         </Field>
 
-        <Field data-invalid={!!errors.password}>
-          <FieldLabel htmlFor="password">Senha</FieldLabel>
-          <PasswordInput
-            id="password"
-            autoComplete="current-password"
-            aria-invalid={!!errors.password}
-            {...register("password")}
-          />
-          <FieldError errors={[errors.password]} />
-          <Link
-            href="/forgot-password"
-            className="self-end text-sm font-medium text-primary hover:underline"
-          >
-            Esqueci minha senha
-          </Link>
-        </Field>
-
-        <Button type="submit" size="lg" disabled={signIn.isPending}>
-          {signIn.isPending ? (
+        {/* Disabled after success too, until the redirect: no double send. */}
+        <Button
+          type="submit"
+          size="lg"
+          disabled={forgot.isPending || forgot.isSuccess}
+        >
+          {forgot.isPending ? (
             <>
               <CircleNotch className="animate-spin" aria-hidden />
-              Entrando...
+              Enviando...
             </>
           ) : (
-            "Entrar"
+            "Enviar código"
           )}
         </Button>
       </FieldGroup>
