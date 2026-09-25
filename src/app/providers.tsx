@@ -81,7 +81,7 @@ export function Providers({ children }: { children: ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         {/* Top, not bottom: the bottom belongs to the navigation bar. */}
-        <Toaster position="top-center" />
+        <Toaster position="top-right" />
         {children}
         {/* Dev only. Parked above the bottom bar and the "+" button, where the
             default corner would cover the Perfil tab and swallow its taps. */}
