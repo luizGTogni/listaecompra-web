@@ -5,10 +5,13 @@ import Link from "next/link";
 import { CircleNotch, ShoppingBag, UsersThree } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { currentUserQuery } from "@/features/auth/queries";
+import { useDocumentTitle } from "@/hooks/use-document-title";
 import { shopperListQuery } from "../queries";
+import { AiSuggestButton } from "./ai-suggest-button";
 import { AddItemForm } from "./add-item-form";
 import { GuestBadge } from "./guest-badge";
 import { DeleteListDialog } from "./delete-list-dialog";
+import { ShareListSheet } from "./share-list-sheet";
 import { ShopperItemRow } from "./shopper-item-row";
 import { ToggleListClosedButton } from "./toggle-list-closed-button";
 
@@ -98,7 +101,12 @@ export function ShopperListDetailView({ listId }: { listId: string }) {
         </p>
       )}
 
-      {!closed && <AddItemForm listId={listId} />}
+      {!closed && (
+        <>
+          <AiSuggestButton listId={listId} />
+          <AddItemForm listId={listId} />
+        </>
+      )}
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-12 text-center">

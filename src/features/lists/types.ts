@@ -2,6 +2,9 @@
 export interface ShopperList {
   id: string;
   userId: string;
+  // Code that lets anyone signed in join the list (`GET /shoppers/:id` sends
+  // it). Optional: a backend build from before it omits it.
+  shareCode?: string;
   title: string;
   description: string;
   closedAt: string | null;
@@ -46,6 +49,10 @@ export interface ShopperItem {
   description: string;
   quantity: number;
   purchasedAt: string | null;
+  // Who marked it as bought. Optional: a backend build from before this field
+  // omits it, and items bought earlier have no author (`null`).
+  purchasedById?: string | null;
+  purchasedBy?: { name: string; username: string } | null;
   createdAt: string;
 }
 
@@ -68,6 +75,12 @@ export interface ShopperListMember {
   shopperListId: string;
   acceptedAt: string | null;
   invitedAt: string;
+  // Optional: a backend build from before this field omits it, and the row
+  // then falls back to a truncated id.
+  user?: {
+    name: string;
+    username: string;
+  };
 }
 
 // `GET /users/shoppers/invites`: unlike the plain member list above, an

@@ -19,7 +19,7 @@ Things the frontend needs or works around. Each task says what the frontend does
 
 **In progress on the backend:** `POST /shoppers/:id/members/invite` now takes `{ username }` in the body (no `memberId` in the URL); `GetUserFoundByUsernameService` does an exact `findByUsername`. The frontend already uses it: the invite form asks for a username, normalizes `@Maria` to `maria` (sign-up stores usernames in lower case, and the lookup is exact), and the Profile screen shows the user's name and `@username` with a copy button (`MyUsername`).
 
-**Still open:** `GET /shoppers/:id/members` only returns `memberId` per row, so the members screen shows `Usuário 1b9d6bcd` for every member but the current user (the owner row is already named, from `GET /shoppers/:id`'s `user`). Suggest the same enrichment as invites: `user: { name, username }` per member, so it can say "Maria (@maria)".
+**Done:** `GET /shoppers/:id/members` now sends `user: { name, username }` per member; `MemberRow` shows "Maria (@maria)" and falls back to `Usuário 1b9d6bcd` when `user` is missing (older build).
 
 **Note:** `find-all-shopper-list-invite.schema.ts` now uses `user` (fixed), matching the Prisma query. The frontend also tolerates an invite that comes without `shopperList` (an older build), instead of crashing.
 

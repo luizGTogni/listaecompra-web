@@ -49,6 +49,34 @@ describe("MembersView, as the owner", () => {
     expect(screen.getByText("Convite pendente")).toBeInTheDocument();
   });
 
+  it("shows a member's name and username when the backend sends them", async () => {
+    mockApi({
+      "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+      "GET /shoppers/list-1": listDetailReply(
+        makeList({ id: "list-1", title: "Feira", userId: ME }),
+      ),
+      "GET /shoppers/list-1/members": {
+        status: 200,
+        body: {
+          shopperListMembers: [
+            makeMember({
+              memberId: "guest-1",
+              user: { name: "Maria Silva", username: "maria" },
+            }),
+          ],
+        },
+      },
+    });
+    renderWithProviders(<MembersView listId="list-1" />);
+
+    expect(await screen.findByText(/Maria Silva/)).toHaveTextContent(
+      "Maria Silva (@maria)",
+    );
+    expect(
+      screen.getByRole("button", { name: "Remover Maria Silva" }),
+    ).toBeInTheDocument();
+  });
+
   it("invites someone by username, normalizing @ and case", async () => {
     const user = userEvent.setup();
     const fetchMock = mockApi({
@@ -195,7 +223,7 @@ describe("MembersView, as the owner", () => {
     await screen.findByText("Usuário guest-1");
 
     await user.click(
-      screen.getByRole("button", { name: "Remover usuário guest-1" }),
+      screen.getByRole("button", { name: "Remover Usuário guest-1" }),
     );
 
     await waitFor(() =>

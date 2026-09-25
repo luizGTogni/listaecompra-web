@@ -37,6 +37,8 @@ export function makeItem(overrides: Partial<ShopperItem> = {}): ShopperItem {
     description: "",
     quantity: 1,
     purchasedAt: null,
+    purchasedById: null,
+    purchasedBy: null,
     createdAt: "2026-09-20T12:00:00.000Z",
     ...overrides,
   };

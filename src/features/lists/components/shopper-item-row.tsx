@@ -8,7 +8,9 @@ import {
   Plus,
   Trash,
 } from "@phosphor-icons/react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { currentUserQuery } from "@/features/auth/queries";
 import { cn } from "@/utils/cn";
 import { getItemActionMessage } from "../errors";
 import {
@@ -36,7 +38,16 @@ export function ShopperItemRow({
   const updateQuantity = useUpdateItemQuantity(listId);
   const removeItem = useRemoveItem(listId);
 
+  const currentUserId = useQuery(currentUserQuery).data?.user.id;
+
   const purchased = !!item.purchasedAt;
+  // Items bought before the backend tracked the author have no name to show.
+  const purchasedByName =
+    purchased && item.purchasedBy
+      ? item.purchasedById === currentUserId
+        ? "você"
+        : item.purchasedBy.name
+      : null;
   // The backend refuses to change the quantity of a purchased item.
   const canEditQuantity = !disabled && !purchased;
   const busy =
@@ -129,6 +140,11 @@ export function ShopperItemRow({
         </Button>
       </div>
 
+      {purchasedByName && (
+        <p className="pl-9 text-sm text-muted-foreground">
+          Comprado por {purchasedByName}
+        </p>
+      )}
       {busy && (
         <span className="sr-only" role="status">
           Atualizando {item.title}...

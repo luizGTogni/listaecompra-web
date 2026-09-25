@@ -22,8 +22,8 @@ interface MemberRowProps {
   canRemove: boolean;
 }
 
-// The backend only gives us the member's id (see docs/backend-tasks.md), so
-// that is all there is to show for anyone but the current user.
+// A member is shown by name and @username; an older backend build sends only
+// the id, so that truncated id is the fallback.
 export function MemberRow({
   listId,
   member,
@@ -33,6 +33,8 @@ export function MemberRow({
   const removeMember = useRemoveMember(listId);
   const leaveList = useLeaveList(listId);
   const pending = !member.acceptedAt;
+  const fallbackName = `Usuário ${member.memberId.slice(0, 8)}`;
+  const displayName = member.user?.name ?? fallbackName;
   const mutation = isSelf ? leaveList : removeMember;
 
   return (
@@ -45,7 +47,13 @@ export function MemberRow({
 
         <div className="min-w-0 flex-1">
           <p className="truncate">
-            {isSelf ? "Você" : `Usuário ${member.memberId.slice(0, 8)}`}
+            {isSelf ? "Você" : displayName}
+            {!isSelf && member.user && (
+              <span className="text-muted-foreground">
+                {" "}
+                (@{member.user.username})
+              </span>
+            )}
           </p>
           {pending && (
             <p className="text-sm text-muted-foreground">Convite pendente</p>
@@ -76,7 +84,7 @@ export function MemberRow({
               size="icon-sm"
               disabled={removeMember.isPending}
               onClick={() => removeMember.mutate(member.memberId)}
-              aria-label={`Remover usuário ${member.memberId.slice(0, 8)}`}
+              aria-label={`Remover ${displayName}`}
               className="text-destructive"
             >
               {removeMember.isPending ? (
