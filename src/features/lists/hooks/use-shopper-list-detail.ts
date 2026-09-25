@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   addShopperItem,
   removeShopperItem,
+  resetShareCode,
   toggleItemPurchased,
   updateItemQuantity,
 } from "../api";
@@ -64,4 +65,14 @@ export function useInvalidateListEverywhere(listId: string) {
     queryClient.invalidateQueries({ queryKey: shopperListDetailKey(listId) });
     queryClient.invalidateQueries({ queryKey: shopperListsKey });
   };
+}
+
+// Only the detail carries the code, and no list screen shows it.
+export function useResetShareCode(listId: string) {
+  const invalidate = useInvalidateListDetail(listId);
+
+  return useMutation({
+    mutationFn: () => resetShareCode(listId),
+    onSuccess: invalidate,
+  });
 }

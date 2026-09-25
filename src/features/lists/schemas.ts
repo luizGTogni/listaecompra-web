@@ -65,3 +65,20 @@ export const inviteMemberSchema = z.object({
 });
 
 export type InviteMemberValues = z.infer<typeof inviteMemberSchema>;
+
+// What people paste is either the bare code or the whole share link
+// (`.../join/<code>`): both work.
+export function extractShareCode(input: string) {
+  const value = input.trim();
+  const fromLink = value.match(/\/join\/([^/?#\s]+)/);
+  return fromLink ? decodeURIComponent(fromLink[1]) : value;
+}
+
+export const joinByCodeSchema = z.object({
+  shareCode: z
+    .string()
+    .transform(extractShareCode)
+    .pipe(z.string().min(1, "Digite o código da lista.")),
+});
+
+export type JoinByCodeValues = z.infer<typeof joinByCodeSchema>;

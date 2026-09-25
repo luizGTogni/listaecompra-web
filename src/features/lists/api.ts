@@ -117,3 +117,20 @@ export function declineShopperListInvite(listId: string, memberId: string) {
     method: "DELETE",
   });
 }
+
+// Owner only, open lists only. The old code (and every link with it) stops
+// working.
+export function resetShareCode(listId: string) {
+  return apiFetch<{ shopperList: ShopperList }>(
+    `/shoppers/${listId}/share-code/reset`,
+    { method: "PATCH" },
+  );
+}
+
+// Joins straight away as an accepted member: no invite to accept.
+export function enterListByShareCode(shareCode: string) {
+  return apiFetch<{ shopperListMember: ShopperListMember }>(
+    "/shoppers/members/enter",
+    { method: "POST", body: { shareCode } },
+  );
+}

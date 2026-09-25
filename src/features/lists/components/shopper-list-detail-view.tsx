@@ -86,6 +86,13 @@ export function ShopperListDetailView({ listId }: { listId: string }) {
             Membros
           </Link>
         </Button>
+        {isOwner && !closed && shopperList.shareCode && (
+          <ShareListSheet
+            listId={listId}
+            listTitle={shopperList.title}
+            shareCode={shopperList.shareCode}
+          />
+        )}
         {isOwner && (
           <>
             <ToggleListClosedButton listId={listId} closed={closed} />
