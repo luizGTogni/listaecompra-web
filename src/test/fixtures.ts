@@ -13,6 +13,7 @@ export function makeList(overrides: Partial<ShopperList> = {}): ShopperList {
   return {
     id: `00000000-0000-4000-8000-${String(counter).padStart(12, "0")}`,
     userId: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
+    shareCode: `share-code-${counter}`,
     title: `Lista ${counter}`,
     description: "",
     closedAt: null,
@@ -37,6 +38,8 @@ export function makeItem(overrides: Partial<ShopperItem> = {}): ShopperItem {
     description: "",
     quantity: 1,
     purchasedAt: null,
+    purchasedById: null,
+    purchasedBy: null,
     createdAt: "2026-09-20T12:00:00.000Z",
     ...overrides,
   };

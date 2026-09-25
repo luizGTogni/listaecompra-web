@@ -33,7 +33,7 @@ describe("MainLayout", () => {
       screen.getAllByRole("navigation", { name: "Principal" }),
     ).toHaveLength(2);
     expect(
-      screen.getByRole("link", { name: "Nova lista" }),
+      screen.getByRole("button", { name: "Nova lista" }),
     ).toBeInTheDocument();
   });
 
@@ -50,6 +50,6 @@ describe("MainLayout", () => {
     expect(
       screen.getAllByRole("navigation", { name: "Principal" }),
     ).toHaveLength(1);
-    expect(screen.queryByRole("link", { name: "Nova lista" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova lista" })).toBeNull();
   });
 });

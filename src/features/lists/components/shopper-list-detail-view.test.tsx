@@ -96,6 +96,74 @@ describe("ShopperListDetailView", () => {
     ).toBeDisabled();
   });
 
+  it("shows who marked an item as purchased", async () => {
+    const at = "2026-09-20T12:00:00Z";
+    mockApi({
+      "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+      "GET /shoppers/list-1": listDetailReply(
+        makeList({ id: "list-1", userId: ME }),
+        [
+          makeItem({
+            title: "Leite",
+            purchasedAt: at,
+            purchasedById: "other-id",
+            purchasedBy: { name: "Maria Silva", username: "maria" },
+          }),
+          makeItem({
+            title: "Pão",
+            purchasedAt: at,
+            purchasedById: ME,
+            purchasedBy: { name: "Eu Mesmo", username: "eu" },
+          }),
+          makeItem({ title: "Ovos", purchasedAt: at }),
+          makeItem({ title: "Café" }),
+        ],
+      ),
+    });
+    renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+    expect(await screen.findByText("Comprado por Maria Silva")).toBeVisible();
+    expect(screen.getByText("Comprado por você")).toBeVisible();
+    expect(screen.getAllByText(/Comprado por/)).toHaveLength(2);
+  });
+
+  it("opens the AI chat from the floating button on an open list", async () => {
+    mockApi({
+      "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+      "GET /shoppers/list-1": listDetailReply(
+        makeList({ id: "list-1", userId: ME }),
+      ),
+    });
+    renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Sugerir itens com IA/ }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Ajuda da IA" });
+    expect(within(dialog).getByLabelText("Mensagem para a IA")).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Fechar" }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("hides the AI helper on a closed list", async () => {
+    mockApi({
+      "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+      "GET /shoppers/list-1": listDetailReply(
+        makeList({
+          id: "list-1",
+          userId: ME,
+          closedAt: "2026-09-20T12:00:00Z",
+        }),
+      ),
+    });
+    renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+    await screen.findByText(/Esta lista está concluída/);
+    expect(screen.queryByRole("button", { name: /IA/ })).toBeNull();
+  });
+
   it("lists unpurchased items before purchased ones", async () => {
     mockApi({
       "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),

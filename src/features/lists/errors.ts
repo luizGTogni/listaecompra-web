@@ -115,3 +115,21 @@ export function getInviteActionMessage(error: unknown): string {
   }
   return getCommonErrorMessage(error);
 }
+
+// Joining by code (typed or from a link). The backend answers 404 for an
+// unknown code, 409 `ShopperListClosed` for a finished list, 409
+// `ResourceAlreadyExists` when already a member and 403 for the owner.
+export function getJoinByCodeMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const name = error.body?.name;
+    if (name === "ResourceNotFound") {
+      return "Código inválido ou expirado. Peça um novo código para quem criou a lista.";
+    }
+    if (name === "ShopperListClosed") return "Esta lista já foi concluída.";
+    if (name === "ResourceAlreadyExists") {
+      return "Você já participa desta lista.";
+    }
+    if (name === "Forbbiden") return "Esta lista já é sua.";
+  }
+  return getCommonErrorMessage(error);
+}

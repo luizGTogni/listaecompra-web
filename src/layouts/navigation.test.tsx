@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { BottomNav } from "./bottom-nav";
 import { DesktopNav } from "./desktop-nav";
 import { NewListButton } from "./new-list-button";
@@ -55,14 +56,31 @@ describe.each([
 });
 
 describe("NewListButton", () => {
-  it("links to the new list screen with an accessible name", () => {
+  it("opens a chooser: an empty list and the AI preview", async () => {
     navigation.pathname = "/lists";
     render(<NewListButton />);
 
-    expect(screen.getByRole("link", { name: "Nova lista" })).toHaveAttribute(
-      "href",
-      "/lists/new",
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Nova lista" }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Como você quer começar?",
+    });
+    expect(
+      within(dialog).getByRole("link", { name: /Lista vazia/ }),
+    ).toHaveAttribute("href", "/lists/new");
+    expect(
+      within(dialog).getByRole("link", { name: /Criar com IA/ }),
+    ).toHaveAttribute("href", "/lists/new/ai");
+  });
+
+  it("closes the chooser with the close button", async () => {
+    navigation.pathname = "/lists";
+    render(<NewListButton />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Nova lista" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it.each([
@@ -76,7 +94,7 @@ describe("NewListButton", () => {
     navigation.pathname = pathname;
     render(<NewListButton />);
 
-    expect(screen.queryByRole("link", { name: "Nova lista" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Nova lista" })).toBeNull();
   });
 
   it.each(["/lists", "/history"])("shows on %s", (pathname) => {
@@ -84,7 +102,7 @@ describe("NewListButton", () => {
     render(<NewListButton />);
 
     expect(
-      screen.getByRole("link", { name: "Nova lista" }),
+      screen.getByRole("button", { name: "Nova lista" }),
     ).toBeInTheDocument();
   });
 });

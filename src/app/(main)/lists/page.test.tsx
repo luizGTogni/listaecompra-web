@@ -3,6 +3,8 @@ import ListsPage from "@/app/(main)/lists/page";
 import { listsReply, mockApi, requestsTo } from "@/test/fetch";
 import { renderWithProviders } from "@/test/render";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -17,6 +19,10 @@ describe("ListsPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("searchbox", { name: "Buscar listas" }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: "Entrar com código" }),
     ).toBeInTheDocument();
 
     await waitFor(() =>

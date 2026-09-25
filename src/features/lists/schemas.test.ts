@@ -1,4 +1,5 @@
 import {
+  joinByCodeSchema,
   DESCRIPTION_MAX_LENGTH,
   newListSchema,
   TITLE_MAX_LENGTH,
@@ -43,5 +44,20 @@ describe("newListSchema", () => {
     });
 
     expect(result).toEqual({ title: "Feira", description: "sábado" });
+  });
+});
+
+describe("joinByCodeSchema", () => {
+  it("takes the code out of a pasted link", () => {
+    expect(
+      joinByCodeSchema.parse({ shareCode: " http://x.com/join/abc-1?a=b " }),
+    ).toEqual({ shareCode: "abc-1" });
+  });
+
+  it("keeps a bare code and rejects an empty one", () => {
+    expect(joinByCodeSchema.parse({ shareCode: " abc " }).shareCode).toBe(
+      "abc",
+    );
+    expect(joinByCodeSchema.safeParse({ shareCode: "  " }).success).toBe(false);
   });
 });
