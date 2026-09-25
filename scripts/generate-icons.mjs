@@ -45,3 +45,42 @@ const faviconSizes = await Promise.all(
   [16, 32, 48].map((size) => render(logo("mark-small.svg"), size)),
 );
 await write("src/app/favicon.ico", await pngToIco(faviconSizes));
+
+// iOS splash screens (apple-touch-startup-image), portrait, light and dark.
+// Device list is shared with src/app/layout.tsx; colors come from theme-colors.ts.
+const devices = JSON.parse(
+  await readFile(resolve(root, "src/assets/splash-devices.json"), "utf8"),
+);
+const themeSource = await readFile(
+  resolve(root, "src/app/theme-colors.ts"),
+  "utf8",
+);
+const splashColors = {
+  light: themeSource.match(/light:\s*"(#[0-9a-fA-F]{6})"/)[1],
+  dark: themeSource.match(/dark:\s*"(#[0-9a-fA-F]{6})"/)[1],
+};
+
+await mkdir(resolve(root, "public/splash"), { recursive: true });
+for (const { width, height, ratio } of devices) {
+  const w = width * ratio;
+  const h = height * ratio;
+  // The mark is a quarter of the screen width, centered.
+  const markSize = Math.round(w / 4);
+  const mark = await render(logo("mark.svg"), markSize);
+
+  for (const [theme, background] of Object.entries(splashColors)) {
+    const png = await sharp({
+      create: { width: w, height: h, channels: 3, background },
+    })
+      .composite([
+        {
+          input: mark,
+          left: Math.round((w - markSize) / 2),
+          top: Math.round((h - markSize) / 2),
+        },
+      ])
+      .png()
+      .toBuffer();
+    await write(`public/splash/${theme}-${w}x${h}.png`, png);
+  }
+}
