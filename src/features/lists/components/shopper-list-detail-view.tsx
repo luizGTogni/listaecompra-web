@@ -19,6 +19,7 @@ export function ShopperListDetailView({ listId }: { listId: string }) {
   const list = useQuery(shopperListQuery(listId));
   // Already in the cache (the route guard loaded it): no extra request.
   const currentUserId = useQuery(currentUserQuery).data?.user.id;
+  useDocumentTitle(list.data?.shopperList.title);
 
   if (list.isPending) {
     return (
