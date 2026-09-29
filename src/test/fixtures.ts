@@ -37,6 +37,7 @@ export function makeItem(overrides: Partial<ShopperItem> = {}): ShopperItem {
     title: `Item ${counter}`,
     description: "",
     quantity: 1,
+    unit: "UNIT",
     purchasedAt: null,
     purchasedById: null,
     purchasedBy: null,

@@ -18,8 +18,14 @@ import {
   useToggleItemPurchased,
   useUpdateItemQuantity,
 } from "../hooks/use-shopper-list-detail";
-import { ITEM_MAX_QUANTITY } from "../schemas";
 import type { ShopperItem } from "../types";
+import {
+  formatQuantity,
+  normalizeUnit,
+  roundQuantity,
+  UNIT_INFO,
+} from "../units";
+import { EditItemSheet } from "./edit-item-sheet";
 
 interface ShopperItemRowProps {
   listId: string;
@@ -60,9 +66,18 @@ export function ShopperItemRow({
     (removeItem.isError && removeItem.error) ||
     null;
 
+  const unit = normalizeUnit(item.unit);
+  const { step, max } = UNIT_INFO[unit];
+  // A step that would reach zero is not offered: zero deletes the item on the
+  // backend, and the trash button is the one way to do that here.
+  const canDecrease = roundQuantity(item.quantity - step) > 0;
+  const canIncrease = item.quantity < max;
+
   function changeQuantity(next: number) {
-    if (next < 1) return;
-    updateQuantity.mutate({ itemId: item.id, quantity: next });
+    updateQuantity.mutate({
+      itemId: item.id,
+      quantity: Math.min(roundQuantity(next), max),
+    });
   }
 
   return (
@@ -102,26 +117,28 @@ export function ShopperItemRow({
             type="button"
             variant="outline"
             size="icon-sm"
-            disabled={!canEditQuantity || item.quantity <= 1}
-            onClick={() => changeQuantity(item.quantity - 1)}
+            disabled={!canEditQuantity || !canDecrease}
+            onClick={() => changeQuantity(item.quantity - step)}
             aria-label="Diminuir quantidade"
           >
             <Minus aria-hidden />
           </Button>
-          <span className="w-6 text-center text-sm tabular-nums">
-            {item.quantity}
+          <span className="min-w-8 text-center text-sm tabular-nums">
+            {formatQuantity(item.quantity, unit)}
           </span>
           <Button
             type="button"
             variant="outline"
             size="icon-sm"
-            disabled={!canEditQuantity || item.quantity >= ITEM_MAX_QUANTITY}
-            onClick={() => changeQuantity(item.quantity + 1)}
+            disabled={!canEditQuantity || !canIncrease}
+            onClick={() => changeQuantity(item.quantity + step)}
             aria-label="Aumentar quantidade"
           >
             <Plus aria-hidden />
           </Button>
         </div>
+
+        {canEditQuantity && <EditItemSheet listId={listId} item={item} />}
 
         <Button
           type="button"

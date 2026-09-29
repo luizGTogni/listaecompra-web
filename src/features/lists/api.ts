@@ -10,6 +10,7 @@ import type {
   ShopperListMember,
   ShopperListsPage,
 } from "./types";
+import type { ItemUnit } from "./units";
 
 export function createShopperList(input: CreateShopperListInput) {
   return apiFetch<{ shopperList: ShopperList }>("/shoppers", {
@@ -63,15 +64,17 @@ export function toggleItemPurchased(listId: string, itemId: string) {
   );
 }
 
-// Quantity 0 removes the item (the backend's own shortcut for it).
+// Quantity 0 removes the item (the backend's own shortcut for it). Without
+// `unit` the backend keeps the current one.
 export function updateItemQuantity(
   listId: string,
   itemId: string,
   quantity: number,
+  unit?: ItemUnit,
 ) {
   return apiFetch<{ shopperItem: ShopperItem }>(
     `/shoppers/${listId}/items/${itemId}/quantity`,
-    { method: "PATCH", body: { quantity } },
+    { method: "PATCH", body: { quantity, unit } },
   );
 }
 

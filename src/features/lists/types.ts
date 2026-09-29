@@ -42,12 +42,17 @@ export interface ShopperListsPage {
   total: number;
 }
 
+import type { ItemUnit } from "./units";
+
 export interface ShopperItem {
   id: string;
   shopperListId: string;
   title: string;
   description: string;
+  // Can be a fraction (1.5 kg); JSON always sends it as a number.
   quantity: number;
+  // Optional: a backend build from before units omits it (read as UNIT).
+  unit?: ItemUnit;
   purchasedAt: string | null;
   // Who marked it as bought. Optional: a backend build from before this field
   // omits it, and items bought earlier have no author (`null`).
@@ -65,6 +70,8 @@ export interface AddItemInput {
   title: string;
   description: string;
   quantity: number;
+  // The API assumes UNIT when omitted.
+  unit?: ItemUnit;
 }
 
 // The backend only knows the member by id: no username/name comes back on

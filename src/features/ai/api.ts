@@ -1,5 +1,10 @@
 import { apiFetch } from "@/services/api";
-import type { AiChatMessage, AiChatReply, AiProposal } from "./types";
+import type {
+  AiApplyResult,
+  AiChatMessage,
+  AiChatReply,
+  AiProposal,
+} from "./types";
 
 // Without `shopperListId` the chat is about a list that does not exist yet.
 export function sendAiChat(input: {
@@ -16,17 +21,18 @@ export function applyAiProposal(input: {
 }) {
   const { title, description, addItems, removeItems } = input.proposal;
 
-  return apiFetch<{ shopperListId: string; added: number; removed: number }>(
-    "/ai/apply",
-    {
-      method: "POST",
-      body: {
-        shopperListId: input.shopperListId,
+  return apiFetch<AiApplyResult>("/ai/apply", {
+    method: "POST",
+    body: {
+      shopperListId: input.shopperListId,
+      title,
+      description,
+      addItems: addItems.map(({ title, quantity, unit }) => ({
         title,
-        description,
-        addItems,
-        removeItemIds: removeItems.map((item) => item.id),
-      },
+        quantity,
+        unit: unit ?? "UNIT",
+      })),
+      removeItemIds: removeItems.map((item) => item.id),
     },
-  );
+  });
 }

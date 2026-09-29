@@ -246,6 +246,7 @@ describe("ShopperListDetailView", () => {
       title: "Leite",
       description: "",
       quantity: 3,
+      unit: "UNIT",
     });
     expect(await screen.findByText("Leite")).toBeInTheDocument();
     // Ready for the next item.
@@ -387,12 +388,240 @@ describe("ShopperListDetailView", () => {
       },
     });
     renderWithProviders(<ShopperListDetailView listId="list-1" />);
-    await screen.findByRole("button", { name: "Concluir lista" });
+    await openOptions(user);
 
-    await user.click(screen.getByRole("button", { name: "Concluir lista" }));
+    await user.click(screen.getByRole("menuitem", { name: "Concluir lista" }));
 
+    await openOptions(user);
     expect(
-      await screen.findByRole("button", { name: "Reabrir lista" }),
+      await screen.findByRole("menuitem", { name: "Reabrir lista" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the members in a sheet, without leaving the list", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+      "GET /shoppers/list-1": listDetailReply(
+        makeList({ id: "list-1", userId: ME, title: "Feira" }),
+      ),
+      "GET /shoppers/list-1/members": {
+        status: 200,
+        body: { shopperListMembers: [] },
+      },
+    });
+    renderWithProviders(<ShopperListDetailView listId="list-1" />);
+    await openOptions(user);
+
+    await user.click(screen.getByRole("menuitem", { name: "Membros" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Membros" });
+    expect(await within(dialog).findByText("Dono da lista")).toBeVisible();
+    expect(
+      within(dialog).getByText("Ninguém foi convidado ainda."),
+    ).toBeVisible();
+  });
+
+  describe("quantities and units", () => {
+    const list = () => makeList({ id: "list-1", userId: ME });
+
+    function setup(items: unknown[]) {
+      return mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(list(), items),
+      });
+    }
+
+    async function addItem(quantity: string, unit: string) {
+      const user = userEvent.setup();
+      await screen.findByText("Ainda não há itens.");
+      await user.type(screen.getByLabelText("Nome do item"), "Arroz");
+      await user.clear(screen.getByLabelText("Quantidade"));
+      await user.type(screen.getByLabelText("Quantidade"), quantity);
+      await user.selectOptions(screen.getByLabelText("Unidade"), unit);
+      await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+    }
+
+    it("sends a decimal typed with a comma as a number", async () => {
+      const fetchMock = mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(list()),
+        "POST /shoppers/list-1/items/add": {
+          status: 201,
+          body: { shopperItem: makeItem({ quantity: 1.5, unit: "KG" }) },
+        },
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+      await addItem("1,5", "KG");
+
+      await waitFor(() =>
+        expect(
+          requestsTo(fetchMock, "POST /shoppers/list-1/items/add"),
+        ).toHaveLength(1),
+      );
+      const [, init] = requestsTo(
+        fetchMock,
+        "POST /shoppers/list-1/items/add",
+      )[0];
+      expect(JSON.parse(init!.body as string)).toMatchObject({
+        quantity: 1.5,
+        unit: "KG",
+      });
+    });
+
+    it("refuses a fraction in a unit that takes only whole numbers", async () => {
+      const fetchMock = setup([]);
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+      await addItem("1,5", "BOTTLE");
+
+      expect(await screen.findByText("Use um número inteiro.")).toBeVisible();
+      expect(
+        requestsTo(fetchMock, "POST /shoppers/list-1/items/add"),
+      ).toHaveLength(0);
+    });
+
+    it("refuses more than the unit's maximum (100 bottles)", async () => {
+      const fetchMock = setup([]);
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+      await addItem("100", "BOTTLE");
+
+      expect(
+        await screen.findByText("A quantidade máxima é 99 garrafas."),
+      ).toBeVisible();
+      expect(
+        requestsTo(fetchMock, "POST /shoppers/list-1/items/add"),
+      ).toHaveLength(0);
+    });
+
+    it("refuses more than 3 decimal places", async () => {
+      setup([]);
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+      await addItem("1,2345", "KG");
+
+      expect(
+        await screen.findByText("Use no máximo 3 casas decimais."),
+      ).toBeVisible();
+    });
+
+    it("shows the unit next to the quantity", async () => {
+      setup([
+        makeItem({ title: "Carne", quantity: 1.5, unit: "KG" }),
+        makeItem({ title: "Refri", quantity: 2, unit: "L" }),
+        makeItem({ title: "Cerveja", quantity: 24, unit: "CAN" }),
+      ]);
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+      expect(await screen.findByText("1,5 kg")).toBeVisible();
+      expect(screen.getByText("2 L")).toBeVisible();
+      expect(screen.getByText("24 latas")).toBeVisible();
+    });
+
+    it("reads an item without a unit as plain units", async () => {
+      const legacy = makeItem({ title: "Arroz", quantity: 2 });
+      delete legacy.unit;
+      setup([legacy]);
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+
+      await screen.findByText("Arroz");
+
+      expect(screen.getByText("2")).toBeVisible();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Editar Arroz" }),
+      );
+      expect(
+        within(screen.getByRole("dialog")).getByLabelText("Unidade"),
+      ).toHaveValue("UNIT");
+    });
+
+    it("steps decimals by half a kilo and never reaches zero", async () => {
+      const user = userEvent.setup();
+      const fetchMock = mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(list(), [
+          makeItem({ id: "item-1", title: "Carne", quantity: 0.5, unit: "KG" }),
+        ]),
+        "PATCH /shoppers/list-1/items/item-1/quantity": {
+          status: 200,
+          body: { shopperItem: makeItem({ quantity: 1, unit: "KG" }) },
+        },
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Carne");
+
+      // 0.5 - 0.5 would be 0, which deletes the item on the backend.
+      expect(
+        screen.getByRole("button", { name: "Diminuir quantidade" }),
+      ).toBeDisabled();
+
+      await user.click(
+        screen.getByRole("button", { name: "Aumentar quantidade" }),
+      );
+
+      const [, init] = requestsTo(
+        fetchMock,
+        "PATCH /shoppers/list-1/items/item-1/quantity",
+      )[0];
+      expect(JSON.parse(init!.body as string)).toEqual({ quantity: 1 });
+    });
+
+    it("edits the exact quantity and the unit", async () => {
+      const user = userEvent.setup();
+      const fetchMock = mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(list(), [
+          makeItem({ id: "item-1", title: "Suco", quantity: 1.5, unit: "L" }),
+        ]),
+        "PATCH /shoppers/list-1/items/item-1/quantity": {
+          status: 200,
+          body: { shopperItem: makeItem({ quantity: 2, unit: "BOTTLE" }) },
+        },
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Suco");
+
+      await user.click(screen.getByRole("button", { name: "Editar Suco" }));
+      const dialog = within(screen.getByRole("dialog"));
+      await user.selectOptions(dialog.getByLabelText("Unidade"), "BOTTLE");
+      await user.clear(dialog.getByLabelText("Quantidade"));
+      await user.type(dialog.getByLabelText("Quantidade"), "2");
+      await user.click(dialog.getByRole("button", { name: "Salvar" }));
+
+      const [, init] = requestsTo(
+        fetchMock,
+        "PATCH /shoppers/list-1/items/item-1/quantity",
+      )[0];
+      expect(JSON.parse(init!.body as string)).toEqual({
+        quantity: 2,
+        unit: "BOTTLE",
+      });
+    });
+
+    it("starts the edit from the current value and refuses an invalid one", async () => {
+      const user = userEvent.setup();
+      const fetchMock = setup([
+        makeItem({ id: "item-1", title: "Carne", quantity: 1.5, unit: "KG" }),
+      ]);
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Carne");
+
+      await user.click(screen.getByRole("button", { name: "Editar Carne" }));
+      const dialog = within(screen.getByRole("dialog"));
+      expect(dialog.getByLabelText("Quantidade")).toHaveValue("1,5");
+
+      await user.clear(dialog.getByLabelText("Quantidade"));
+      await user.type(dialog.getByLabelText("Quantidade"), "101");
+      await user.click(dialog.getByRole("button", { name: "Salvar" }));
+
+      expect(
+        await screen.findByText("A quantidade máxima é 100 kg."),
+      ).toBeVisible();
+      expect(
+        requestsTo(fetchMock, "PATCH /shoppers/list-1/items/item-1/quantity"),
+      ).toHaveLength(0);
+    });
   });
 });
