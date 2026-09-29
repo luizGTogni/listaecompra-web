@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { CircleNotch, Trash } from "@phosphor-icons/react";
+import { CircleNotch } from "@phosphor-icons/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,30 +10,25 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { getListActionMessage } from "../errors";
 import { useDeleteList } from "../hooks/use-delete-list";
 
 export function DeleteListDialog({
+  open,
+  onOpenChange,
   listId,
   listTitle,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   listId: string;
   listTitle: string;
 }) {
-  const [open, setOpen] = useState(false);
   const deleteList = useDeleteList(listId);
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" className="text-destructive">
-          <Trash aria-hidden />
-          Excluir lista
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>

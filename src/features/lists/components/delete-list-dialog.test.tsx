@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { mockApi } from "@/test/fetch";
@@ -7,6 +8,19 @@ import { DeleteListDialog } from "./delete-list-dialog";
 const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
+
+// The dialog is opened by its parent (the options menu): this stands in for it.
+function Harness() {
+  const [open, setOpen] = useState(true);
+  return (
+    <DeleteListDialog
+      open={open}
+      onOpenChange={setOpen}
+      listId="list-1"
+      listTitle="Feira"
+    />
+  );
+}
 
 beforeEach(() => {
   replace.mockClear();
@@ -18,11 +32,8 @@ afterEach(() => {
 
 describe("DeleteListDialog", () => {
   it("asks for confirmation before deleting anything", async () => {
-    const user = userEvent.setup();
     const fetchMock = mockApi({});
-    renderWithProviders(<DeleteListDialog listId="list-1" listTitle="Feira" />);
-
-    await user.click(screen.getByRole("button", { name: "Excluir lista" }));
+    renderWithProviders(<Harness />);
 
     expect(
       screen.getByRole("heading", { name: "Excluir “Feira”?" }),
@@ -33,8 +44,7 @@ describe("DeleteListDialog", () => {
   it("closes without deleting on cancel", async () => {
     const user = userEvent.setup();
     const fetchMock = mockApi({});
-    renderWithProviders(<DeleteListDialog listId="list-1" listTitle="Feira" />);
-    await user.click(screen.getByRole("button", { name: "Excluir lista" }));
+    renderWithProviders(<Harness />);
 
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
 
@@ -49,8 +59,7 @@ describe("DeleteListDialog", () => {
   it("deletes the list and leaves for /lists", async () => {
     const user = userEvent.setup();
     mockApi({ "DELETE /shoppers/list-1": { status: 204 } });
-    renderWithProviders(<DeleteListDialog listId="list-1" listTitle="Feira" />);
-    await user.click(screen.getByRole("button", { name: "Excluir lista" }));
+    renderWithProviders(<Harness />);
 
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
@@ -65,8 +74,7 @@ describe("DeleteListDialog", () => {
         body: { name: "ResourceNotFound", message: "x" },
       },
     });
-    renderWithProviders(<DeleteListDialog listId="list-1" listTitle="Feira" />);
-    await user.click(screen.getByRole("button", { name: "Excluir lista" }));
+    renderWithProviders(<Harness />);
 
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 

@@ -8,6 +8,7 @@ import {
 } from "../api";
 import { shopperListDetailKey, shopperListsKey } from "../queries";
 import type { AddItemInput } from "../types";
+import type { ItemUnit } from "../units";
 
 // Every item mutation below only touches this one list's detail, so they all
 // invalidate the same key. They do NOT touch `shopperListsKey`: the list
@@ -41,8 +42,15 @@ export function useUpdateItemQuantity(listId: string) {
   const invalidate = useInvalidateListDetail(listId);
 
   return useMutation({
-    mutationFn: ({ itemId, quantity }: { itemId: string; quantity: number }) =>
-      updateItemQuantity(listId, itemId, quantity),
+    mutationFn: ({
+      itemId,
+      quantity,
+      unit,
+    }: {
+      itemId: string;
+      quantity: number;
+      unit?: ItemUnit;
+    }) => updateItemQuantity(listId, itemId, quantity, unit),
     onSuccess: invalidate,
   });
 }

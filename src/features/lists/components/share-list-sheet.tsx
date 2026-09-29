@@ -27,6 +27,8 @@ import { getListActionMessage } from "../errors";
 import { useResetShareCode } from "../hooks/use-shopper-list-detail";
 
 interface ShareListSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   listId: string;
   listTitle: string;
   shareCode: string;
@@ -35,6 +37,8 @@ interface ShareListSheetProps {
 // Owner only. Shows the list's code, a QR code and a link that joins straight
 // away, plus a way to replace the code when it leaked.
 export function ShareListSheet({
+  open,
+  onOpenChange,
   listId,
   listTitle,
   shareCode,
@@ -70,13 +74,7 @@ export function ShareListSheet({
   }
 
   return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>
-        <Button variant="outline">
-          <ShareNetwork aria-hidden />
-          Compartilhar
-        </Button>
-      </Dialog.Trigger>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent
         title="Compartilhar lista"
         description="Quem tiver o código ou o link entra na lista."
