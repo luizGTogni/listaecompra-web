@@ -30,7 +30,7 @@ export class NetworkError extends Error {
 // Inlined at build time. The backend already owns port 3000, so `pnpm dev`
 // runs Next on 3001. The backend's CORS only allows this exact origin once
 // credentials (the session cookie) are involved, so the two must match.
-const API_URL =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1";
 
 export async function apiFetch<T>(

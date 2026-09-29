@@ -1,20 +1,171 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { installFakeEventSource } from "@/test/event-source";
 import { listDetailReply, meReply, mockApi, requestsTo } from "@/test/fetch";
 import { makeItem, makeList } from "@/test/fixtures";
 import { renderWithProviders } from "@/test/render";
 import { ShopperListDetailView } from "./shopper-list-detail-view";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
+vi.mock("sonner", () => ({ toast: { info: vi.fn() } }));
 
 // The user id meReply uses, so makeList()'s default owner matches "me".
 const ME = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed";
 
 afterEach(() => {
+  replace.mockClear();
   vi.unstubAllGlobals();
+  // An open Radix menu locks the body; a test that ends with one open would
+  // otherwise leave the next test unable to click anything.
+  document.body.style.pointerEvents = "";
 });
 
+async function openOptions(user: ReturnType<typeof userEvent.setup>) {
+  // From the keyboard: Radix opens on pointerdown, which jsdom only delivers
+  // reliably to the first menu of a file.
+  const trigger = await screen.findByRole("button", {
+    name: "Opções da lista",
+  });
+  trigger.focus();
+  await user.keyboard("{Enter}");
+}
+
 describe("ShopperListDetailView", () => {
+  describe("real-time updates", () => {
+    it("opens one connection per list, with credentials, and closes it on unmount", async () => {
+      const FakeEventSource = installFakeEventSource();
+      mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(
+          makeList({ id: "list-1", userId: ME }),
+        ),
+      });
+      const { unmount } = renderWithProviders(
+        <ShopperListDetailView listId="list-1" />,
+      );
+      await screen.findByRole("heading", { level: 1 });
+
+      expect(FakeEventSource.instances).toHaveLength(1);
+      const source = FakeEventSource.instances[0];
+      expect(source.url).toBe(
+        "http://localhost:3000/api/v1/shoppers/list-1/events",
+      );
+      expect(source.withCredentials).toBe(true);
+      expect(source.closed).toBe(false);
+
+      unmount();
+
+      expect(source.closed).toBe(true);
+    });
+
+    it("refetches the list when someone else changes an item", async () => {
+      const FakeEventSource = installFakeEventSource();
+      const fetchMock = mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": [
+          listDetailReply(makeList({ id: "list-1", userId: ME })),
+          listDetailReply(makeList({ id: "list-1", userId: ME }), [
+            makeItem({ title: "Leite" }),
+          ]),
+        ],
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Ainda não há itens.");
+
+      FakeEventSource.instances[0].emit("item-added", {
+        type: "item-added",
+        actorId: "someone-else",
+        itemId: "item-9",
+      });
+
+      expect(await screen.findByText("Leite")).toBeVisible();
+      expect(requestsTo(fetchMock, "GET /shoppers/list-1")).toHaveLength(2);
+    });
+
+    it("ignores an event caused by the current user's own action", async () => {
+      const FakeEventSource = installFakeEventSource();
+      const fetchMock = mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(
+          makeList({ id: "list-1", userId: ME }),
+        ),
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Ainda não há itens.");
+
+      FakeEventSource.instances[0].emit("item-added", {
+        type: "item-added",
+        actorId: ME,
+        itemId: "item-9",
+      });
+
+      // Give a possible (wrong) refetch a chance to happen.
+      await waitFor(() =>
+        expect(requestsTo(fetchMock, "GET /shoppers/list-1")).toHaveLength(1),
+      );
+    });
+
+    it("leaves the list when the owner removes the current user", async () => {
+      const FakeEventSource = installFakeEventSource();
+      mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(
+          makeList({ id: "list-1", userId: "someone-else" }),
+        ),
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Convidado");
+
+      FakeEventSource.instances[0].emit("member-removed", {
+        type: "member-removed",
+        actorId: "someone-else",
+        memberId: ME,
+      });
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/lists"));
+    });
+
+    it("does nothing here when someone else is removed", async () => {
+      const FakeEventSource = installFakeEventSource();
+      mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(
+          makeList({ id: "list-1", userId: ME }),
+        ),
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Ainda não há itens.");
+
+      FakeEventSource.instances[0].emit("member-removed", {
+        type: "member-removed",
+        actorId: "someone-else",
+        memberId: "yet-another-person",
+      });
+
+      await waitFor(() => expect(replace).not.toHaveBeenCalled());
+    });
+
+    it("leaves the list when it is deleted by its owner", async () => {
+      const FakeEventSource = installFakeEventSource();
+      mockApi({
+        "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
+        "GET /shoppers/list-1": listDetailReply(
+          makeList({ id: "list-1", userId: "someone-else" }),
+        ),
+      });
+      renderWithProviders(<ShopperListDetailView listId="list-1" />);
+      await screen.findByText("Convidado");
+
+      FakeEventSource.instances[0].emit("list-deleted", {
+        type: "list-deleted",
+        actorId: "someone-else",
+      });
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/lists"));
+    });
+  });
+
   it("shows the title, description and items", async () => {
     mockApi({
       "GET /users/me": meReply("2026-09-20T12:05:00.000Z"),
