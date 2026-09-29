@@ -8,7 +8,14 @@ import { shopperListMembersQuery, shopperListQuery } from "../queries";
 import { InviteMemberForm } from "./invite-member-form";
 import { MemberRow } from "./member-row";
 
-export function MembersView({ listId }: { listId: string }) {
+// `showHeader` is off inside the members sheet, which has its own title.
+export function MembersView({
+  listId,
+  showHeader = true,
+}: {
+  listId: string;
+  showHeader?: boolean;
+}) {
   const list = useQuery(shopperListQuery(listId));
   const members = useQuery(shopperListMembersQuery(listId));
   const currentUserId = useQuery(currentUserQuery).data?.user.id;
@@ -52,10 +59,12 @@ export function MembersView({ listId }: { listId: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Membros</h1>
-        <p className="mt-1 text-muted-foreground">{shopperList.title}</p>
-      </div>
+      {showHeader && (
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Membros</h1>
+          <p className="mt-1 text-muted-foreground">{shopperList.title}</p>
+        </div>
+      )}
 
       {isOwner && !closed && <InviteMemberForm listId={listId} />}
       {isOwner && closed && (
