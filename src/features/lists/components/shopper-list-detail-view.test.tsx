@@ -49,13 +49,20 @@ describe("ShopperListDetailView", () => {
     });
     renderWithProviders(<ShopperListDetailView listId="list-1" />);
 
+    const user = userEvent.setup();
+    await openOptions(user);
+
     expect(
-      await screen.findByRole("button", { name: "Concluir lista" }),
+      screen.getByRole("menuitem", { name: "Concluir lista" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Excluir lista" }),
+      screen.getByRole("menuitem", { name: "Excluir lista" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Compartilhar" }),
+    ).toBeVisible();
     expect(screen.queryByText("Convidado")).toBeNull();
+    await user.keyboard("{Escape}");
   });
 
   it("flags a guest and hides the owner's actions", async () => {
@@ -68,8 +75,16 @@ describe("ShopperListDetailView", () => {
     renderWithProviders(<ShopperListDetailView listId="list-1" />);
 
     expect(await screen.findByText("Convidado")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Concluir lista" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Excluir lista" })).toBeNull();
+    await openOptions(userEvent.setup());
+    // A guest still sees who is in the list, and nothing else.
+    expect(screen.getByRole("menuitem", { name: "Membros" })).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", { name: "Concluir lista" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("menuitem", { name: "Excluir lista" }),
+    ).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Compartilhar" })).toBeNull();
   });
 
   it("shows a closed list read-only, with no add-item form", async () => {
