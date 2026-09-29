@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { mockApi } from "@/test/fetch";
@@ -10,12 +11,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The sheet is opened by its parent (the options menu): this stands in for it.
+function Harness() {
+  const [open, setOpen] = useState(true);
+  return (
+    <ShareListSheet
+      open={open}
+      onOpenChange={setOpen}
+      listId="list-1"
+      listTitle="Feira"
+      shareCode="code-1"
+    />
+  );
+}
+
 async function openSheet() {
   const user = userEvent.setup();
-  renderWithProviders(
-    <ShareListSheet listId="list-1" listTitle="Feira" shareCode="code-1" />,
-  );
-  await user.click(screen.getByRole("button", { name: "Compartilhar" }));
+  renderWithProviders(<Harness />);
   return user;
 }
 

@@ -1,4 +1,11 @@
 import { z } from "zod";
+import type { AddItemInput } from "./types";
+import {
+  getQuantityError,
+  ITEM_UNITS,
+  parseQuantity,
+  type ItemUnit,
+} from "./units";
 
 export const TITLE_MAX_LENGTH = 60;
 export const DESCRIPTION_MAX_LENGTH = 200;
@@ -26,27 +33,58 @@ export const newListSchema = z.object({
 export type NewListValues = z.infer<typeof newListSchema>;
 
 export const ITEM_TITLE_MAX_LENGTH = 60;
-export const ITEM_MAX_QUANTITY = 999;
+
+// `quantity` and `unit` are checked together: what is valid depends on both.
+function checkQuantity(
+  value: { quantity: string; unit: ItemUnit },
+  ctx: z.RefinementCtx,
+) {
+  const quantity = parseQuantity(value.quantity);
+  const message =
+    quantity === null
+      ? "Digite uma quantidade válida."
+      : getQuantityError(quantity, value.unit);
+  if (message) ctx.addIssue({ code: "custom", path: ["quantity"], message });
+}
+
+// Editing an existing item: the API only takes these two.
+export const editItemSchema = z
+  .object({ quantity: z.string(), unit: z.enum(ITEM_UNITS) })
+  .superRefine(checkQuantity);
+
+export type EditItemValues = z.infer<typeof editItemSchema>;
 
 // The backend requires the title non-empty by rejecting a duplicate blank
 // one at most once; these are the frontend's own, friendlier limits.
-export const addItemSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, "Dê um nome para o item.")
-    .max(
-      ITEM_TITLE_MAX_LENGTH,
-      `O nome deve ter no máximo ${ITEM_TITLE_MAX_LENGTH} caracteres.`,
-    ),
-  quantity: z.coerce
-    .number()
-    .int("Use um número inteiro.")
-    .min(1, "A quantidade mínima é 1.")
-    .max(ITEM_MAX_QUANTITY, `A quantidade máxima é ${ITEM_MAX_QUANTITY}.`),
-});
+// `quantity` stays the text that was typed ("1,5" is fine): what it means
+// depends on the unit, so it is checked together with it and turned into a
+// number by `toAddItemInput` only when submitting.
+export const addItemSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, "Dê um nome para o item.")
+      .max(
+        ITEM_TITLE_MAX_LENGTH,
+        `O nome deve ter no máximo ${ITEM_TITLE_MAX_LENGTH} caracteres.`,
+      ),
+    quantity: z.string(),
+    unit: z.enum(ITEM_UNITS),
+  })
+  .superRefine(checkQuantity);
 
 export type AddItemValues = z.infer<typeof addItemSchema>;
+
+// Only for values that already passed `addItemSchema`.
+export function toAddItemInput(values: AddItemValues): AddItemInput {
+  return {
+    title: values.title,
+    description: "",
+    quantity: parseQuantity(values.quantity) ?? 1,
+    unit: values.unit,
+  };
+}
 
 // Same rules as sign-up's username. A pasted "@maria" or "Maria" is fine:
 // usernames are stored in lower case, so it is normalized before checking.

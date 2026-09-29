@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, PaperPlaneRight, Sparkle } from "@phosphor-icons/react";
+import {
+  ArrowClockwise,
+  Check,
+  PaperPlaneRight,
+  Sparkle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/utils/cn";
-import { getAiApplyMessage, getAiChatMessage } from "../errors";
+import { formatQuantity } from "@/features/lists/units";
+import {
+  getAiApplyMessage,
+  getAiChatMessage,
+  getIgnoredItemsMessage,
+} from "../errors";
 import { useAiChat, useApplyAiProposal } from "../hooks/use-ai-chat";
 import type { AiProposal } from "../types";
 
@@ -16,6 +26,8 @@ interface Message {
   proposal?: AiProposal | null;
   // What the person did with the proposal.
   decision?: "applied" | "discarded";
+  // Set with "applied" when the backend dropped some of the items.
+  warning?: string | null;
 }
 
 interface AiChatProps {
@@ -44,6 +56,9 @@ export function AiChat({
   ]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Only a failed message can be sent again; a failed "Aplicar" already has
+  // its own button still on screen.
+  const [canRetry, setCanRetry] = useState(false);
   const chat = useAiChat(shopperListId);
   const apply = useApplyAiProposal(shopperListId);
   const nextId = useRef(1);
@@ -68,8 +83,14 @@ export function AiChat({
     setDraft("");
     setError(null);
 
+    requestReply([...messages, userMessage]);
+  }
+
+  function requestReply(conversation: Message[]) {
+    setCanRetry(false);
     // The greeting is ours, not part of the conversation with the model.
-    const history = [...messages.filter((m) => m.id !== 0), userMessage]
+    const history = conversation
+      .filter((m) => m.id !== 0)
       .slice(-HISTORY_LIMIT)
       .map((m) => ({ role: m.role, content: m.text }));
 
@@ -80,21 +101,37 @@ export function AiChat({
           { id: nextId.current++, role: "assistant", text: reply, proposal },
         ]);
       },
-      onError: (failure) => setError(getAiChatMessage(failure)),
+      onError: (failure) => {
+        setError(getAiChatMessage(failure));
+        setCanRetry(true);
+      },
     });
   }
 
-  function decide(id: number, decision: "applied" | "discarded") {
+  // The question is already in the conversation: ask again, do not add it twice.
+  function retry() {
+    if (thinking) return;
+    setError(null);
+    requestReply(messages);
+  }
+
+  function decide(
+    id: number,
+    decision: "applied" | "discarded",
+    warning: string | null = null,
+  ) {
     setMessages((current) =>
-      current.map((m) => (m.id === id ? { ...m, decision } : m)),
+      current.map((m) => (m.id === id ? { ...m, decision, warning } : m)),
     );
   }
 
   function applyProposal(message: Message) {
     if (!message.proposal) return;
     setError(null);
+    const sent = message.proposal.addItems.length;
     apply.mutate(message.proposal, {
-      onSuccess: () => decide(message.id, "applied"),
+      onSuccess: ({ added }) =>
+        decide(message.id, "applied", getIgnoredItemsMessage(sent, added)),
       onError: (failure) => setError(getAiApplyMessage(failure)),
     });
   }
@@ -140,12 +177,25 @@ export function AiChat({
       </div>
 
       {error && (
-        <p
+        <div
           role="alert"
-          className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          className="flex items-center justify-between gap-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
-          {error}
-        </p>
+          <p>{error}</p>
+          {canRetry && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={thinking}
+              onClick={retry}
+              className="shrink-0"
+            >
+              <ArrowClockwise aria-hidden />
+              Reenviar
+            </Button>
+          )}
+        </div>
       )}
 
       {!started && (
@@ -244,6 +294,7 @@ function Bubble({
           <ProposalCard
             proposal={message.proposal}
             decision={message.decision}
+            warning={message.warning}
             createsList={createsList}
             applying={applying}
             onApply={onApply}
@@ -258,6 +309,7 @@ function Bubble({
 interface ProposalCardProps {
   proposal: AiProposal;
   decision?: "applied" | "discarded";
+  warning?: string | null;
   createsList: boolean;
   applying: boolean;
   onApply: () => void;
@@ -267,6 +319,7 @@ interface ProposalCardProps {
 function ProposalCard({
   proposal,
   decision,
+  warning,
   createsList,
   applying,
   onApply,
@@ -304,7 +357,7 @@ function ProposalCard({
               >
                 <span>{item.title}</span>
                 <span className="text-muted-foreground tabular-nums">
-                  ×{item.quantity}
+                  {formatQuantity(item.quantity, item.unit)}
                 </span>
               </li>
             ))}
@@ -328,10 +381,17 @@ function ProposalCard({
       )}
 
       {decision === "applied" ? (
-        <p className="flex items-center gap-1.5 text-sm font-medium text-contrast">
-          <Check weight="bold" aria-hidden />
-          {createsList ? "Lista criada" : "Aplicado à lista"}
-        </p>
+        <div className="flex flex-col gap-1">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-contrast">
+            <Check weight="bold" aria-hidden />
+            {createsList ? "Lista criada" : "Aplicado à lista"}
+          </p>
+          {warning && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {warning}
+            </p>
+          )}
+        </div>
       ) : decision === "discarded" ? (
         <p className="text-sm text-muted-foreground">Descartado</p>
       ) : (

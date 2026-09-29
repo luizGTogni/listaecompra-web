@@ -43,6 +43,23 @@ export function getAddItemFeedback(error: unknown): AddItemFeedback {
     if (error.body?.name === "ShopperListClosed") {
       return { fields: {}, form: "Esta lista está fechada." };
     }
+    // Business rule: `{ name, message }`, no `fields`.
+    if (error.body?.name === "InvalidItemQuantity") {
+      return {
+        fields: { quantity: "Quantidade inválida para esta unidade." },
+      };
+    }
+    // Validation: `fields` lists what was wrong, but is not always there.
+    if (error.status === 400 && error.body?.fields?.length) {
+      const fields: AddItemFeedback["fields"] = {};
+      for (const { field } of error.body.fields) {
+        if (field === "title") fields.title = "Nome inválido.";
+        if (field === "quantity" || field === "unit") {
+          fields.quantity = "Quantidade ou unidade inválida.";
+        }
+      }
+      if (Object.keys(fields).length > 0) return { fields };
+    }
   }
 
   return { fields: {}, form: getCommonErrorMessage(error) };

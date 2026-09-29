@@ -1,24 +1,23 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { CircleNotch, ShoppingBag, UsersThree } from "@phosphor-icons/react";
+import { CircleNotch, ShoppingBag } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { currentUserQuery } from "@/features/auth/queries";
 import { useDocumentTitle } from "@/hooks/use-document-title";
+import { useShopperListEvents } from "../hooks/use-shopper-list-events";
 import { shopperListQuery } from "../queries";
 import { AiSuggestButton } from "./ai-suggest-button";
 import { AddItemForm } from "./add-item-form";
 import { GuestBadge } from "./guest-badge";
-import { DeleteListDialog } from "./delete-list-dialog";
-import { ShareListSheet } from "./share-list-sheet";
+import { ListOptionsMenu } from "./list-options-menu";
 import { ShopperItemRow } from "./shopper-item-row";
-import { ToggleListClosedButton } from "./toggle-list-closed-button";
 
 export function ShopperListDetailView({ listId }: { listId: string }) {
   const list = useQuery(shopperListQuery(listId));
   // Already in the cache (the route guard loaded it): no extra request.
   const currentUserId = useQuery(currentUserQuery).data?.user.id;
+  useShopperListEvents(listId);
   useDocumentTitle(list.data?.shopperList.title);
 
   if (list.isPending) {
@@ -63,42 +62,22 @@ export function ShopperListDetailView({ listId }: { listId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            {shopperList.title}
-          </h1>
-          {isGuest && <GuestBadge owner={shopperList.user} />}
-          {closed && (
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-              Concluída
-            </span>
-          )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {shopperList.title}
+            </h1>
+            {isGuest && <GuestBadge owner={shopperList.user} />}
+            {closed && (
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                Concluída
+              </span>
+            )}
+          </div>
+          <ListOptionsMenu list={shopperList} isOwner={isOwner} />
         </div>
         {shopperList.description && (
           <p className="text-muted-foreground">{shopperList.description}</p>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {/* Owner and accepted members can both see who else has access. */}
-        <Button variant="outline" asChild>
-          <Link href={`/lists/${listId}/members`}>
-            <UsersThree aria-hidden />
-            Membros
-          </Link>
-        </Button>
-        {isOwner && !closed && shopperList.shareCode && (
-          <ShareListSheet
-            listId={listId}
-            listTitle={shopperList.title}
-            shareCode={shopperList.shareCode}
-          />
-        )}
-        {isOwner && (
-          <>
-            <ToggleListClosedButton listId={listId} closed={closed} />
-            <DeleteListDialog listId={listId} listTitle={shopperList.title} />
-          </>
         )}
       </div>
 

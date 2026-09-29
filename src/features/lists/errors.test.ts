@@ -1,5 +1,5 @@
 import { ApiError, NetworkError } from "@/services/api";
-import { getNewListFeedback } from "./errors";
+import { getAddItemFeedback, getNewListFeedback } from "./errors";
 
 describe("getNewListFeedback", () => {
   it("puts a repeated name under the title field", () => {
@@ -33,5 +33,29 @@ describe("getNewListFeedback", () => {
     expect(getNewListFeedback(new ApiError(500, null)).form).toMatch(
       /Algo deu errado/,
     );
+  });
+});
+
+describe("getAddItemFeedback: 400 answers", () => {
+  it("handles a business error with no `fields`", () => {
+    const error = new ApiError(400, {
+      name: "InvalidItemQuantity",
+      message: "x",
+    });
+    expect(getAddItemFeedback(error).fields.quantity).toMatch(/inválida/);
+  });
+
+  it("handles a validation error with `fields`", () => {
+    const error = new ApiError(400, {
+      name: "ZodError",
+      message: "x",
+      fields: [{ field: "unit", code: "invalid_value", message: "x" }],
+    });
+    expect(getAddItemFeedback(error).fields.quantity).toMatch(/inválida/);
+  });
+
+  it("does not assume `fields` exists", () => {
+    const error = new ApiError(400, { name: "Other", message: "x" });
+    expect(() => getAddItemFeedback(error)).not.toThrow();
   });
 });

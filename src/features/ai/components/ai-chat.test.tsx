@@ -10,8 +10,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 const PROPOSAL = {
   title: "Bolo de cenoura",
   addItems: [
-    { title: "Cenoura", quantity: 3 },
-    { title: "Ovos", quantity: 4 },
+    { title: "Cenoura", quantity: 1.5, unit: "KG" },
+    { title: "Ovos", quantity: 2, unit: "DOZEN" },
   ],
   removeItems: [{ id: "old-1", title: "Pão" }],
 };
@@ -64,7 +64,8 @@ describe("AiChat", () => {
       messages: [{ role: "user", content: "quero um bolo" }],
     });
     expect(screen.getByText("Cenoura")).toBeVisible();
-    expect(screen.getByText("×4")).toBeVisible();
+    expect(screen.getByText("1,5 kg")).toBeVisible();
+    expect(screen.getByText("2 dúzias")).toBeVisible();
     expect(screen.getByText("Pão")).toBeVisible();
     // Nothing is applied until the person confirms.
     expect(requestsTo(fetchMock, "POST /ai/apply")).toHaveLength(0);
@@ -165,5 +166,68 @@ describe("AiChat", () => {
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText(/indisponível/)).toBeVisible();
     expect(screen.getByLabelText("Mensagem para a IA")).toBeEnabled();
+  });
+
+  it("warns when the backend ignored some of the items", async () => {
+    mockApi({
+      "POST /ai/chat": {
+        status: 200,
+        body: { reply: "ok", proposal: PROPOSAL },
+      },
+      "POST /ai/apply": {
+        status: 200,
+        body: { shopperListId: "list-1", added: 1, removed: 1 },
+      },
+    });
+    setup("list-1");
+    await ask("bolo");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Aplicar" }),
+    );
+
+    expect(
+      await screen.findByText("1 item foi ignorado por ser inválido."),
+    ).toBeVisible();
+  });
+
+  it("lets the conversation go on when the AI asks a question", async () => {
+    mockApi({
+      "POST /ai/chat": {
+        status: 200,
+        body: { reply: "Quantas pessoas são?", proposal: null },
+      },
+    });
+    setup("list-1");
+
+    await ask("churrasco");
+
+    expect(await screen.findByText("Quantas pessoas são?")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Aplicar" })).toBeNull();
+    expect(screen.getByLabelText("Mensagem para a IA")).toBeEnabled();
+  });
+
+  it("sends the same message again after an error, without repeating it", async () => {
+    const fetchMock = mockApi({
+      "POST /ai/chat": [
+        { status: 503, body: { name: "AiUnavailable", message: "x" } },
+        { status: 200, body: { reply: "Aqui vai!", proposal: null } },
+      ],
+    });
+    setup("list-1");
+    await ask("quero um bolo");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Reenviar" }),
+    );
+
+    expect(await screen.findByText("Aqui vai!")).toBeVisible();
+    expect(screen.getAllByText("quero um bolo")).toHaveLength(1);
+    const calls = requestsTo(fetchMock, "POST /ai/chat");
+    expect(calls).toHaveLength(2);
+    expect(JSON.parse(calls[1][1]?.body as string).messages).toEqual([
+      { role: "user", content: "quero um bolo" },
+    ]);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
